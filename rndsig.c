@@ -1,7 +1,12 @@
-static char rcsid[]="$Id: rndsig.c,v 1.4 2000/12/21 01:49:21 eabalea Exp $";
+static char rcsid[]="$Id: rndsig.c,v 1.5 2001/02/03 18:22:58 eabalea Exp $";
 
 /*
  * $Log: rndsig.c,v $
+ * Revision 1.5  2001/02/03 18:22:58  eabalea
+ * Support des signatures multi-lignes. Le mot-clé 'Quotes' désigne maintenant les
+ * signatures multi-lignes. Pour les signatures simple-ligne, utiliser le mot-clé
+ * TagLines.
+ *
  * Revision 1.4  2000/12/21 01:49:21  eabalea
  * Added autotools to help install the stuff
  *
@@ -53,28 +58,20 @@ enum {
 
 
 /******
- * void SIGHUPhandler(int signum)
+ * void readtaglines(void)
  *
- * SIGHUP signal handler
+ * This function reads all the taglines (=single line signatures).
  ******/
-void SIGHUPhandler(int signum)
+void readtaglines(void)
 {
-  int i;
-  char buf[1024];
   FILE *f;
+  char buf[1024];
 
-  for(i=0; i < nbsigs; i++)
-    free(sigs[i]);
-  free(sigs);
-  nbsigs=0;
-
-  /* We re-read all the quotes in the specified file */
-  if (!(f=fopen(quotesfile, "r")))
+  if (!(f=fopen(taglinesfile, "r")))
   {
-    fprintf(stderr, "Unable to open %s for reading.\n", quotesfile);
+    fprintf(stderr, "Unable to open %s for reading.\n", taglinesfile);
     exit(-1);
   }
-  
   while(fgets(buf, sizeof(buf)-1, f))
   {
     if (nbsigs)
@@ -84,6 +81,88 @@ void SIGHUPhandler(int signum)
     sigs[nbsigs++]=strdup(buf);
   }
   fclose(f);
+}
+
+
+/******
+ * void readquotes(void)
+ *
+ * This function reads all the quotes (=multi-line signatures).
+ ******/
+void readquotes(void)
+{
+  FILE *f;
+  char buf[1024],
+       *quote=NULL;
+  int quotelen=0,
+      endquote=0;
+
+  if (!(f=fopen(quotesfile, "r")))
+  {
+    fprintf(stderr, "Unable to open %s for reading.\n", quotesfile);
+    exit(-1);
+  }
+
+  while (!feof(f))
+  {
+    /* Read an entire quote (quotes end with '%%' on a line) */
+    do {
+      buf[0]=0;
+      fgets(buf, sizeof(buf)-1, f);
+      if (buf[0]) /* Check if we reached end-of-file */
+        endquote=!strncmp(buf, "%%", 2);
+      else
+        endquote=1;
+      if (!endquote) /* If we didn't reach end-of-file, then copy the line to the current quote */
+      {
+        if (quotelen)
+        {
+          quotelen+=strlen(buf);
+          quote=realloc(quote, quotelen+1);
+        }
+        else
+        {
+          quotelen=strlen(buf);
+          quote=malloc(quotelen+1);
+          quote[0]=0;
+        }
+        strcat(quote, buf);
+      }
+    } while (!endquote);
+
+    /* If we have a new quote, then insert it into the list */
+    if (quote)
+    {
+      if (nbsigs)
+        sigs=(unsigned char **)realloc(sigs, (nbsigs+1)*sizeof(unsigned char **));
+      else
+        sigs=(unsigned char **)malloc((nbsigs+1)*sizeof(unsigned char **));
+      sigs[nbsigs++]=strdup(quote);
+      free(quote);
+      quote=NULL;
+      quotelen=0;
+    }
+  }
+  fclose(f);
+}
+
+
+/******
+ * void SIGHUPhandler(int signum)
+ *
+ * SIGHUP signal handler
+ ******/
+void SIGHUPhandler(int signum)
+{
+  int i;
+
+  for(i=0; i < nbsigs; i++)
+    free(sigs[i]);
+  free(sigs);
+  nbsigs=0;
+
+  readtaglines();
+  readquotes();
 
   /* ToDo:
      - close and delete the output file
@@ -286,6 +365,15 @@ void readrcfile(void)
           break;
         }
         
+        /* Is it a 'TagLines' line? */
+        if (!strncasecmp(buf, "TagLines", strlen("TagLines")))
+        {
+          strncpy(taglinesfile, buf+strlen("TagLines"), MAXNAMLEN);
+          trim(taglinesfile);
+          expandfilename(taglinesfile);
+          break;
+        }
+
         /* Is it an 'Output' line? */
         if (!strncasecmp(buf, "Output", strlen("Output")))
         {
@@ -318,24 +406,15 @@ void readrcfile(void)
   
   /* We start by reading all the quotes in the specified file */
   if (!quotesfile[0])
-  {
     fprintf(stderr, "You didn't specify any quotes file name.\n");
-    exit(-1);
-  }
-  if (!(f=fopen(quotesfile, "r")))
-  {
-    fprintf(stderr, "Unable to open %s for reading.\n", quotesfile);
-    exit(-1);
-  }
-  while(fgets(buf, sizeof(buf)-1, f))
-  {
-    if (nbsigs)
-      sigs=(unsigned char **)realloc(sigs, (nbsigs+1)*sizeof(unsigned char **));
-    else
-      sigs=(unsigned char **)malloc((nbsigs+1)*sizeof(unsigned char **));
-    sigs[nbsigs++]=strdup(buf);
-  }
-  fclose(f);
+  else
+    readquotes();
+
+  /* We then read all the taglines in the specified file */
+  if (!taglinesfile[0])
+    fprintf(stderr, "You didn't specify any taglines file name.\n");
+  else
+    readtaglines();
 
   /* Next thing to do is to get the template */
   if (!(f=fopen(template, "r")))
@@ -373,6 +452,8 @@ int main(int argc, char **argv)
   
   init();
   
+  printf("Ready to serve...\n");
+
   signal(SIGHUP, SIGHUPhandler);
   
   if (!fork())
