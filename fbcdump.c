@@ -1,7 +1,10 @@
-static char rcsid[]="$Id: fbcdump.c,v 1.3 2001/06/26 06:04:51 eabalea Exp $";
+static char rcsid[]="$Id: fbcdump.c,v 1.4 2001/07/27 23:23:03 eabalea Exp $";
 
 /*
  * $Log: fbcdump.c,v $
+ * Revision 1.4  2001/07/27 23:23:03  eabalea
+ * Modifs, pour rendre l'utilisation moins linéaire.
+ *
  * Revision 1.3  2001/06/26 06:04:51  eabalea
  * Meilleure gestion des erreurs
  * Choix du lecteur PC/SC à utiliser
@@ -22,6 +25,10 @@ static char rcsid[]="$Id: fbcdump.c,v 1.3 2001/06/26 06:04:51 eabalea Exp $";
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/bn.h>
+
+#ifdef WIN32
+#include <conio.h>
+#endif
 
 #ifndef MAX_ATR_SIZE
 #define MAX_ATR_SIZE 32
@@ -183,51 +190,6 @@ ENDIF
 
 /* Todo: intégrer les infos du programme ci-dessous:
  ***************************************************
-8 ZONE? NOT IF
-    0 5 LENZONE 1 - 32 FOR		! Balayage de la zone de lecture
-					! pour lire les informations
-        DUP 2 + 5 2 PEEK 2 = IF
-	    DUP 8 + 5 8 PEEK SWITCH		! Récupération du prestataire
-	        3 CASE			! Si VA
-		    DUP 24 + 5 3 PEEK SWITCH
-		        0 CASE
-		            "000100000000000000000000C18407505F55C246AF7AB247CBE332F0EFC2D1C9B2B6BFA697E4D5766891"
-		        ENDCASE
-		        1 CASE
-		            "00010000000000000000000090B8AAA8DE358E7782E81C7723653BE644F7DCC6F816DAF46E532B91E84F"
-		        ENDCASE
-		        2 CASE
-		            "000100000000000000000000D3AB7E06BC577B64101F69B96078A83F6703F49456A1025F65E9000B791F"
-		        ENDCASE
-		        DEFAULT
-		            ""
-	            ENDSWITCH
-	            HEXTOCHAR
-	            LEN 0 = NOT IF
-		        ! Lecture de la Valeur d'authentification
-		        DUP 36 + 5 28 PEEK 7 HEX
-		        &44 &19F 32 FOR
-		            DUP 5 GET + 5 28 PEEK 7 HEX CONCAT
-		        NEXT
-		        HEXTOCHAR
-                        "CP8.DLL" OPENDLL
-		        "CHECKBNKVA" CALLDLL IF
-		            CHARTOHEX
-		            8 320 INITZONE
-		            8 0 SETZONE
-		        ENDIF
-                        CLOSEDLL
-	            ENDIF
-	        ENDCASE
-	        2 CASE			! Zone d'identité
-		    DUP 96 SETVAR
-	        ENDCASE
-	    ENDSWITCH
-        ENDIF
-	DUP 16 + 5 8 PEEK 8 * +		! Passage à la zone suivante
-    NEXT
-ENDIF
-
 REFRESH
     0 0 4 PEEK 3 = IF
         "Application bancaire (B0')" TITLE
@@ -327,74 +289,6 @@ REFRESH
 	    ELSE
 		&00FFFF COLOR		! Couleur jaune !!!
 	    ENDIF
-
-	    ! Lecture du numéro de la carte
-	    DUP 5 SWAP 44 + INITREADZONE
-	    5 16 READZONE
-	    4 HEX " " CONCAT
-	    5 4 READZONE 1 HEX CONCAT
-	    5 4 READZONE DROP 5 12 READZONE 3 HEX CONCAT " " CONCAT
-	    5 16 READZONE 4 HEX CONCAT " " CONCAT
-	    5 4 READZONE DROP 5 16 READZONE 4 HEX CONCAT
-	    3000 3500 4000 500 HTEXT
-
-	    ! Lecture de la date de fin de validité
-	    DUP 176 + 5 16 PEEK 4 HEX DUPTEXT "YYMM" "MM/YY" VALIDDATE IF
-		5000 4300 800 250 LVTEXT
-		"YYMM" "YYYYMM" VALIDDATE DROP
-		"" "" "YYYYMM" VALIDDATE DROP
-		STRCMP -1 = IF
-		    0 25 &0000FF PEN
-		    4900 4200 900 450 5350 4700 5350 4700 ARC
-		ENDIF
-	    ELSE
-		DROPTEXT		! Date invalide, pas de test !
-	    ENDIF
-		
-	    ! Lecture du nom
-	    ""
-	    DUP DUP &E4 + SWAP &1AF + 4 FOR
-		! Si l'adresse pointe sur le début d'un mot, on laisse les
-		! 4 octets système
-		DUP &1F AND 0 = IF 4 + ENDIF
-		! Si l'adresse pointe sur le dernier quartet du mot, la
-		! lecture se fait à cheval
-		DUP &1F AND &1C = IF
-		    DUP DUP 5 4 PEEK 16 *	! Poids fort
-		    SWAP 8 + 5 4 PEEK		! Poids faible
-		    + CHAR CONCAT
-		    8 + ! Mise à jour adresse
-		ELSE
-		    DUP 5 8 PEEK CHAR CONCAT
-		    4 +				! Mise à jour adresse
-		ENDIF
-	    NEXT
-
-	    3100 4600 4400 250 LVTEXT
-
-	    ! Vérification de la VA
-	    8 ZONE? IF
-		DUP DUP DUP DUP DUP DUP
-		0 8 7 PEEK 23 8 21 PEEK OR 0 =
-		&B0 6 11 PEEK 7 8 11 PEEK = AND
-		&C1 6 5 PEEK &12 8 5 PEEK = AND SWAP
-		&2C + 5 20 PEEK &2C 8 &14 PEEK = AND SWAP
-		&44 + 5 &1C PEEK &40 8 &1C PEEK = AND SWAP
-		&64 + 5 &1C PEEK &5C 8 &1C PEEK = AND SWAP
-		&84 + 5 8 PEEK &78 8 8 PEEK = AND SWAP
-		&90 + 5 16 PEEK &80 8 16 PEEK = AND SWAP
-		&B0 + 5 16 PEEK &90 8 16 PEEK = AND NOT IF
-		    0 50 &0000FF PEN
-		    2000 2000 MOVE 8000 5000 LINE
-		    2000 5000 MOVE 8000 2000 LINE
-		ENDIF
-	    ELSE
-		0 50 &0000FF PEN
-		2000 2000 MOVE 8000 5000 LINE
-		2000 5000 MOVE 8000 2000 LINE
-	    ENDIF
-        ENDIF
-	DUP 16 + 5 8 PEEK 8 * +	! Passage à la zone suivante
 
     NEXT
 
@@ -1079,7 +973,6 @@ unsigned long ResponseLength;
 /*
  * Variables pour stocker le code porteur
  */
-char PINCODE[4];
 int PINgiven=0;
 
 
@@ -1092,7 +985,162 @@ ZoneTransaction ZT;
 ZoneLecture ZL;
 ZoneFabrication ZF;
 
+/* Le menu à afficher */
+struct MenuEntry
+{
+	int displayed;
+	char *text;
+};
+typedef struct MenuEntry MenuEntry;
 
+MenuEntry Menu[] =
+{
+	{ 1, "Quitter" },
+	{ 1, "Choisir un lecteur de carte" },
+	{ 0, "Ouvrir une session" },
+	{ 0, "Fermer la session" },
+	{ 0, "Interprêter l'ATR" },
+	{ 0, "Saisir/valider le code porteur" },
+	{ 0, "Lire la carte bancaire" },
+	{ 0, "Afficher la Zone de Fabrication" },
+	{ 0, "Afficher la Zone de Lecture" },
+	{ 0, "Afficher la Zone d'Etat" },
+	{ 0, "Afficher la Zone Confidentielle" },
+	{ 0, "Afficher la Zone de Transaction" },
+	{ 0, NULL }
+};
+
+
+/****************************************
+ * Afficher les entrées du menu activées
+ ****************************************/
+void displaymenu(void)
+{
+	int i = 0,
+		left = 1;
+	unsigned int maxlen = 0;
+	char txt[1024];
+	
+	while (Menu[i].text)
+	{
+		if (Menu[i].displayed && (strlen(Menu[i].text) > maxlen))
+			maxlen=strlen(Menu[i].text);
+		i++;
+	}
+
+	i=0;
+
+	printf("\n");
+	while (Menu[i].text)
+	{
+		if (Menu[i].displayed)
+		{
+			sprintf(txt, "[%s%d] %s", (i<10)?" ":"", i, Menu[i].text);
+			printf("%-*s", maxlen+5, txt);
+			if (left)
+			{
+				printf("    ");
+				left=0;
+			}
+			else
+			{
+				printf("\n");
+				left=1;
+			}
+		}
+		i++;
+	}
+	if (!left)
+		printf("\n");
+}
+
+
+/*******************************************************
+ * Demander à l'utilisateur de faire un choix parmi les
+ * entrées de menu activées
+ *******************************************************/
+int getcommand(void)
+{
+	int command = -1;
+	char tmp[1024];
+	
+	printf("\n");
+	while ((command < 0) || (!Menu[command].displayed))
+	{
+		printf("> ");
+		fgets(tmp, sizeof(tmp), stdin);
+		sscanf(tmp, "%d\n", &command);
+	}
+	return command;
+}
+
+
+#ifdef WIN32
+char *getpass(char *prompt)
+{
+	static char password[128];
+	int ch,
+		i = 0,
+		quit = 0;
+
+	memset(password, 0, sizeof(password));
+	printf("%s", prompt);
+	while (!quit)
+	{
+		ch=getch();
+		switch (ch)
+		{
+		case 8:
+			password[i]=0;
+			if (i)
+			{
+				i--;
+				printf("\b \b");
+				fflush(stdout);
+			}
+			break;
+
+		case 13:
+		case EOF:
+			printf("\n");
+			quit=1;
+			break;
+
+		default:
+			if (i < 128)
+			{
+				password[i]=(char)(ch & 0xff);
+				printf("*");
+				i++;
+			}
+			break;
+		}
+	}
+	return password;
+}
+#endif
+
+
+/*******************
+ * Affiche l'aide du programme
+ *******************/
+void help(void)
+{
+	printf("Usage: TestToken {options}\n");
+	printf("  options:\n");
+	printf("    -p text          default pincode to use\n");
+	printf("    --pincode text   same as -p\n");
+	printf("    -s number        default slotID to use\n");
+	printf("    --slot number    same as -s\n");
+	printf("    -l file          PKCS#11 library to load\n");
+	printf("    --library file   same as -l\n");
+	exit(-1);
+}
+
+
+/*******************************************************
+ * Renvoyer le nom symbolique d'une erreur SCard
+ *******************************************************/
 char *SCardError(unsigned long int rv)
 {
 	static char errormsg[1024];
@@ -1141,20 +1189,25 @@ char *SCardError(unsigned long int rv)
 }
 
 /****************************************************************************
- * void testPIN(void)                                                       *
+ * void GetAndTestPIN(void)                                                 *
  *                                                                          *
- * Fonction : Présente le code PIN placé dans la variable globale PINCODE,  *
+ * Fonction : Demande un code PIN à l'utilisateur, le présente à la puce,   *
  *            et renvoie le résultat de la présentation (0=NOK, 1=OK)       *
  ****************************************************************************/
-int testPIN(void)
+int GetAndTestPIN(void)
 {
 	long hexpin;
 	unsigned long int rv;
+	char *PINCODE;
+
+	PINCODE=getpass("Entrez le code PIN désiré:");
 	
 	hexpin=strtol(PINCODE, NULL, 16);
 	hexpin<<=14;
 	hexpin+=0x3fff;
-	
+
+	memset(PINCODE, 0, 128);
+
 	/* On présente le PIN code */
 	Command[0]=0xBC;
 	Command[1]=0x20;
@@ -1502,6 +1555,7 @@ void LitPuce(void)
 	
 	/* Si l'utilisateur a présenté le code PIN, on peut donc lire la Zone
 	d'Etat */
+	/* ToDo: vérifier aussi les options pour connaître les conditions d'accès à cette zone */
 	if (PINgiven)
 	{
 		int len=(ZF.ADC*8-ZF.ADM*8)/2,
@@ -1526,6 +1580,7 @@ void LitPuce(void)
 	
 	/* Si l'utilisateur a présenté le code PIN, on peut donc lire la Zone
 	Confidentielle */
+	/* ToDo: vérifier aussi les options pour connaître les conditions d'accès à cette zone */
 	if (PINgiven)
 	{
 		int len=(ZF.ADT*8-ZF.ADC*8)/2,
@@ -1554,6 +1609,7 @@ void LitPuce(void)
 	
 	/* Si l'utilisateur a présenté le code PIN, on peut donc lire la Zone
 	des Transactions */
+	/* ToDo: vérifier aussi les options pour connaître les conditions d'accès à cette zone */
 	if (PINgiven)
 	{
 		int len=(ZF.ADL*8-ZF.ADT*8)/2,
@@ -2205,6 +2261,7 @@ void CloseAll(void)
  *                                                                          *
  * Fonction : Interprête la ligne de commande                               *
  ****************************************************************************/
+#if 0
 void GetCmdLine(int argc, char **argv)
 {
   while (argc > 1)
@@ -2220,6 +2277,7 @@ void GetCmdLine(int argc, char **argv)
     argv++;
   }
 }
+#endif
 
 
 /****************************************************************************
@@ -2258,15 +2316,14 @@ int main(int argc, char **argv)
 	              cardstate = 0,
 	              AtrLen = MAX_ATR_SIZE,
 				  i,
-				  rv;
+				  rv,
+				  quit = 0,
+				  action;
 	unsigned char Atr[MAX_ATR_SIZE];
 	char *liste = NULL;
 	char **lecteurs = NULL;
 	int nblecteurs = 0;
 	int choixlecteur = 0;
-
-	/* On va lire la ligne de commande */
-	GetCmdLine(argc, argv);
 
 	/* Petit message pour dire qui je suis... */
 	printf("FBCDump\n");
@@ -2281,9 +2338,6 @@ int main(int argc, char **argv)
 
 	/* En cas d'appel à exit(), on veut laisser la machine quand même propre... */
 	atexit(CloseAll);
-
-	/* ToDo: rechercher la liste des lecteurs, laisser l'utilisateur en choisir un
-	   s'il y en a plusieurs */
 
 	/* On cherche ensuite la liste des lecteurs enregistrés */
 	if ((rv=SCardListReaders(context, NULL, NULL, &taille)) != SCARD_S_SUCCESS)
@@ -2312,72 +2366,133 @@ int main(int argc, char **argv)
 		i+=strlen(liste+i)+1;
 	}
 
-	/* On demande à l'utilisateur de choisir l'un d'entre eux */
-	choixlecteur=ChoisitLecteur(lecteurs, nblecteurs);
-
-	/* Et on cherche à se connecter au premier d'entre eux */
-	if ((rv=SCardConnect(context, lecteurs[choixlecteur], SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0, &handle, &protocol)) != SCARD_S_SUCCESS)
-		printf("Erreur lors de l'ouverture d'une connexion avec la carte (%s).\n", SCardError(rv));
-	else
+	/* On affiche un menu, dont le contenu change en fonction du contexte,
+	   on demande à l'utilisateur de faire un choix, ce qui changera le
+       contexte */
+	while (!quit)
 	{
-		/* On initialise les zones à blanc */
-		memset(&ZE, 0, sizeof(ZE));
-		memset(&ZC, 0, sizeof(ZC));
-		memset(&ZT, 0, sizeof(ZT));
-		memset(&ZL, 0, sizeof(ZL));
-		memset(&ZF, 0, sizeof(ZF));
-
-		printf("¦ Identification de la carte ¦\n");
-		printf("==============================\n");
-		/* Récupération de l'ATR, pour avoir une première info */
-		if ((rv=SCardStatus(handle, liste, &taille, &cardstate, &protocol, Atr, &AtrLen)) != SCARD_S_SUCCESS)
+		displaymenu();
+		action=getcommand();
+		switch (action)
 		{
-			fprintf(stderr, "Erreur lors de l'appel à SCardStatus (%s).\n", SCardError(rv));
-			printf("Impossible\n");
-		}
-		else
-		{
-			printf("ATR:\n");
-			DumpData(Atr, AtrLen, "    ");
-			printf("\n");
-			printf("Composant (MCE=%02x): ", Atr[4]);
-			switch (Atr[4])
-			{
-			case 0x31: printf("Motorola SC24/D40R (B4-B0' v1)\n");
-				break;
-			case 0x32: printf("SGS Thomson ST16301B/SKB (B4-B0' v1)\n");
-				break;
-			case 0x33: printf("Motorola SC24/D31J-D44J-F24V (B4-B0' v2)\n");
-				break;
-			case 0x34: printf("SGS Thomson ST16301B (B4-B0' v2)\n");
-				break;
-			case 0x35: printf("Texas TMS373C012 (B4-B0' v2)\n");
-				ZF.Texas=1;
-				break;
-			case 0x36: printf("SGS Thomson ST16601B/SKG (B4-B0' v2)\n");
-				break;
-			default  : printf("Inconnu\n");
-				break;
-			}
-			printf("Caractéristiques fonctionnelles (MCF=%02x): ", Atr[5]);
-			switch (Atr[5])
-			{
-			case 0x04: printf("Masque 4\n"); break;
-			default  : printf("Inconnu\n"); break;
-			}
-		}
-		/* Présentation du PIN code demandée? OK, on teste... */
-		if (PINgiven)
-			PINgiven=testPIN();
-		
-		/* On lit les zones de la puce B0' */
-		LitPuce();
+		case 0: /* Quitter */
+			/* C'est juste pour quitter */
+			quit=1;
+			break;
 
-		/* Et on les affiche proprement */
-		AffichePuce();
+		case 1: /* Choisir un lecteur de carte */
+			/* L'utilisateur se verra présenté un choix de ses lecteurs recensés, il devra en choisir un */
+			choixlecteur=ChoisitLecteur(lecteurs, nblecteurs);
+			Menu[2].displayed=1;
+			break;
 
-		/* On libère la carte */
-		SCardDisconnect(handle, SCARD_POWER_DOWN);
+		case 2: /* Ouvrir une session */
+			/* On se connecte au lecteur choisi */
+			if ((rv=SCardConnect(context, lecteurs[choixlecteur], SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0, &handle, &protocol)) != SCARD_S_SUCCESS)
+				printf("Erreur lors de l'ouverture d'une connexion avec la carte (%s).\n", SCardError(rv));
+			else
+			{
+				Menu[3].displayed=1;
+				Menu[4].displayed=1;
+				Menu[5].displayed=1;
+				Menu[6].displayed=1;
+			}
+			break;
+
+		case 3: /* Fermer la session */
+			/* On libère la carte */
+			SCardDisconnect(handle, SCARD_POWER_DOWN);
+			Menu[3].displayed=0;
+			Menu[4].displayed=0;
+			Menu[5].displayed=0;
+			Menu[6].displayed=0;
+			Menu[7].displayed=0;
+			Menu[8].displayed=0;
+			Menu[9].displayed=0;
+			Menu[10].displayed=0;
+			Menu[11].displayed=0;
+			break;
+
+		case 4: /* Interprêter la réponse au reset */
+			/* On va demander à la couche PC/SC la réponse au reset */
+			if ((rv=SCardStatus(handle, liste, &taille, &cardstate, &protocol, Atr, &AtrLen)) != SCARD_S_SUCCESS)
+				printf("Erreur lors de l'appel à SCardStatus (%s).\n", SCardError(rv));
+			else
+			{
+				/* Pas d'erreur, on tente de l'interprêter */
+				printf("¦ Identification de la carte ¦\n");
+				printf("==============================\n");
+				printf("ATR:\n");
+				DumpData(Atr, AtrLen, "    ");
+				printf("\n");
+				printf("Composant (MCE=%02x): ", Atr[4]);
+				switch (Atr[4])
+				{
+				case 0x31: printf("Motorola SC24/D40R (B4-B0' v1)\n");
+					break;
+				case 0x32: printf("SGS Thomson ST16301B/SKB (B4-B0' v1)\n");
+					break;
+				case 0x33: printf("Motorola SC24/D31J-D44J-F24V (B4-B0' v2)\n");
+					break;
+				case 0x34: printf("SGS Thomson ST16301B (B4-B0' v2)\n");
+					break;
+				case 0x35: printf("Texas TMS373C012 (B4-B0' v2)\n");
+					ZF.Texas=1;
+					break;
+				case 0x36: printf("SGS Thomson ST16601B/SKG (B4-B0' v2)\n");
+					break;
+				default  : printf("Inconnu\n");
+					break;
+				}
+				printf("Caractéristiques fonctionnelles (MCF=%02x): ", Atr[5]);
+				switch (Atr[5])
+				{
+				case 0x04: printf("Masque 4\n"); break;
+				default  : printf("Inconnu\n"); break;
+				}
+			}
+			break;
+
+		case 5: /* Saisir et valider le code porteur */
+			PINgiven=GetAndTestPIN();
+			break;
+
+		case 6: /* Lire la carte bancaire */
+			/* On initialise les zones à blanc */
+			memset(&ZE, 0, sizeof(ZE));
+			memset(&ZC, 0, sizeof(ZC));
+			memset(&ZT, 0, sizeof(ZT));
+			memset(&ZL, 0, sizeof(ZL));
+			memset(&ZF, 0, sizeof(ZF));
+			
+			/* On lit les zones de la puce B0' */
+			LitPuce();
+
+			Menu[7].displayed=1;
+			Menu[8].displayed=1;
+			Menu[9].displayed=1;
+			Menu[10].displayed=1;
+			Menu[11].displayed=1;
+
+			break;
+
+		case 7: /* Afficher la Zone de Fabrication */
+			/* Et on les affiche proprement */
+			AffichePuce();
+			break;
+
+		case 8: /* Afficher la Zone de Lecture */
+			break;
+
+		case 9: /* Afficher la Zone d'Etat */
+			break;
+
+		case 10: /* Afficher la Zone Confidentielle */
+			break;
+
+		case 11: /* Afficher la Zone de Transaction */
+			break;
+		}
 	}
 
 	/* Et on laisse le PC/SC Resource Manager tranquille */
