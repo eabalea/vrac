@@ -1,7 +1,10 @@
-static char rcsid[]="$Id: rndsig.c,v 1.2 2000/12/13 17:03:33 eabalea Exp $";
+static char rcsid[]="$Id: rndsig.c,v 1.3 2000/12/13 17:04:35 eabalea Exp $";
 
 /*
  * $Log: rndsig.c,v $
+ * Revision 1.3  2000/12/13 17:04:35  eabalea
+ * I forgot to uncomment the fork() call
+ *
  * Revision 1.2  2000/12/13 17:03:33  eabalea
  * Added a SIGHUP signal handler. It only frees the quotes, and re-read them
  * from the quotes file
@@ -369,7 +372,7 @@ int main(int argc, char **argv)
   
   signal(SIGHUP, SIGHUPhandler);
   
-/*  if (!fork()) */
+  if (!fork())
   {
     while (1)
     {
