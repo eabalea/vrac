@@ -1,7 +1,10 @@
-static char rcsid[]="$Id: rndsig.c,v 1.3 2000/12/13 17:04:35 eabalea Exp $";
+static char rcsid[]="$Id: rndsig.c,v 1.4 2000/12/21 01:49:21 eabalea Exp $";
 
 /*
  * $Log: rndsig.c,v $
+ * Revision 1.4  2000/12/21 01:49:21  eabalea
+ * Added autotools to help install the stuff
+ *
  * Revision 1.3  2000/12/13 17:04:35  eabalea
  * I forgot to uncomment the fork() call
  *

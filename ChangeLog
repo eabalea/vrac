@@ -1,0 +1,10 @@
+Wed Dec 13 17:04:35 2000  Erwann ABALEA  <eabalea@certplus.com>
+
+	* rndsig.c: I forgot to uncomment the fork() call
+
+	* rndsig.c:
+	Added a SIGHUP signal handler. It only frees the quotes, and re-read them
+	from the quotes file
+
+	* rndsig.c: Initial revision
+
