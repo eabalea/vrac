@@ -1,0 +1,847 @@
+<html>
+<head>
+<title>Documentation du module G_Barbre</title>
+</head>
+<body>
+<H1>Documentation du module G_Barbre</H1>
+
+Ce document d&eacute;crit les fonctions du module G_Barbre.
+
+<p>
+
+Ce document s'applique &agrave; la version 1.2 du module G_Barbre.
+
+<p>
+
+
+<Menu>
+<li><a href="#Alphabetical List">Alphabetical list of functions</a>
+<li><a href="#Modules">Liste par modules</a>
+<li><a href="#Files">Liste par fichiers</a>
+</Menu>
+
+
+
+<p><hr></p>
+<a name="Alphabetical List"></a>
+<H1>Alphabetical List</H1>
+
+<Menu>
+<li><a href="#btreeapplique">btreeapplique</a>
+<li><a href="#btreechercher">btreechercher</a>
+<li><a href="#btreechercherprecedent">btreechercherprecedent</a>
+<li><a href="#btreecherchersuivant">btreecherchersuivant</a>
+<li><a href="#btreedernier">btreedernier</a>
+<li><a href="#btreefirstthat">btreefirstthat</a>
+<li><a href="#btreeinserer">btreeinserer</a>
+<li><a href="#btreepremier">btreepremier</a>
+<li><a href="#btreepremierqui">btreepremierqui</a>
+<li><a href="#btreeretirernoeud">btreeretirernoeud</a>
+<li><a href="#creenoeud">creenoeud</a>
+<li><a href="#ins">ins</a>
+<li><a href="#rechdico">rechdico</a>
+<li><a href="#rechinf">rechinf</a>
+<li><a href="#rechsup">rechsup</a>
+<li><a href="#supp">supp</a>
+<li><a href="#videbarbre">videbarbre</a>
+</Menu>
+
+
+
+<p><hr></p>
+<a name="Modules"></a>
+<H1>Modules</H1>
+
+<Menu>
+<li><a href="#G_Barbre">G_Barbre</a>
+</Menu>
+
+
+<p><hr></p>
+<a name="G_Barbre"></a>
+<H1>G_Barbre</H1>
+
+Ces routines servent &agrave; g&eacute;rer un B-arbre contenant des objets quelconques
+ (des pointeurs de void). Ce B-arbre a 32 feuilles &agrave; chaque noeud, et les
+ doublons sont ignor&eacute;s. Une fonction de comparaison d'&eacute;l&eacute;ments doit &ecirc;tre
+ fournie aux fonctions en ayant besoin, ainsi qu'une fonction de lib&eacute;ration de
+ m&eacute;moire.
+ 
+<p>
+
+ Un &eacute;l&eacute;ment est repr&eacute;sent&eacute; par un (void *).
+ 
+<p>
+
+ La racine d'un B-arbre est repr&eacute;sent&eacute;e par:
+ <pre>
+ typedef struct BTreeNode
+  {
+    int cpt;
+    void *cle[MM];
+    struct BTreeNode *ptr[MM + 1];
+  }
+  btreenode;
+ </pre>
+ Typiquement, une d&eacute;claration de la forme suivante permet de d&eacute;clarer la
+ racine d'un B-arbre:
+ <pre>
+ btreenode *racine;
+ </pre>
+ Pour plus d'infos, vous adresser au service Informatique de Gemplus PSI:
+ <pre>
+ Service Informatique
+ GEMPLUS PSI
+ 1, place de la M&eacute;diterran&eacute;e
+ 95206 Sarcelles Cedex
+ </pre>
+
+<Menu>
+<li><a href="#btreeapplique">btreeapplique</a>
+<li><a href="#btreechercher">btreechercher</a>
+<li><a href="#btreechercherprecedent">btreechercherprecedent</a>
+<li><a href="#btreecherchersuivant">btreecherchersuivant</a>
+<li><a href="#btreedernier">btreedernier</a>
+<li><a href="#btreefirstthat">btreefirstthat</a>
+<li><a href="#btreeinserer">btreeinserer</a>
+<li><a href="#btreepremier">btreepremier</a>
+<li><a href="#btreepremierqui">btreepremierqui</a>
+<li><a href="#btreeretirernoeud">btreeretirernoeud</a>
+<li><a href="#creenoeud">creenoeud</a>
+<li><a href="#ins">ins</a>
+<li><a href="#rechdico">rechdico</a>
+<li><a href="#rechinf">rechinf</a>
+<li><a href="#rechsup">rechsup</a>
+<li><a href="#supp">supp</a>
+<li><a href="#videbarbre">videbarbre</a>
+</Menu>
+
+
+
+<p><hr></p>
+<a name="Files"></a>
+<H1>Files</H1>
+
+<Menu>
+<li><a href="#g_barbre.c">g_barbre.c</a>
+</Menu>
+
+
+<p><hr></p>
+<a name="g_barbre.c"></a>
+<H1>g_barbre.c</H1>
+
+
+
+<Menu>
+<li><a href="#btreeapplique">btreeapplique</a>
+<li><a href="#btreechercher">btreechercher</a>
+<li><a href="#btreechercherprecedent">btreechercherprecedent</a>
+<li><a href="#btreecherchersuivant">btreecherchersuivant</a>
+<li><a href="#btreedernier">btreedernier</a>
+<li><a href="#btreefirstthat">btreefirstthat</a>
+<li><a href="#btreeinserer">btreeinserer</a>
+<li><a href="#btreepremier">btreepremier</a>
+<li><a href="#btreepremierqui">btreepremierqui</a>
+<li><a href="#btreeretirernoeud">btreeretirernoeud</a>
+<li><a href="#creenoeud">creenoeud</a>
+<li><a href="#ins">ins</a>
+<li><a href="#rechdico">rechdico</a>
+<li><a href="#rechinf">rechinf</a>
+<li><a href="#rechsup">rechsup</a>
+<li><a href="#supp">supp</a>
+<li><a href="#videbarbre">videbarbre</a>
+</Menu>
+
+
+
+
+
+<p><hr></p>
+<a name="rechdico"></a>
+<center><Font Size=+2>rechdico</Font> (g_barbre.c 89)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+
+<pre>
+ rechdico(void *x, void *a [],int n, int (*fcmp)(const void *,const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+Fonction interne, effectue une recherche dichotomique de
+               l'&eacute;l&eacute;ment 'x' sur le noeud 'a' contenant 'n' &eacute;l&eacute;ments, en
+               utilisant la fonction de comparaison 'fcmp'.
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+le num&eacute;ro de la cl&eacute; o&ugrave; a &eacute;t&eacute; trouv&eacute; l'&eacute;l&eacute;ment.
+<p>
+
+
+
+<p><hr></p>
+<a name="creenoeud"></a>
+<center><Font Size=+2>creenoeud</Font> (g_barbre.c 124)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+
+<pre>
+ creenoeud(void);
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+Fonction interne permettant de cr&eacute;er un noeud vide.
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+Un pointeur vers un noeud
+<p>
+
+
+
+<p><hr></p>
+<a name="ins"></a>
+<center><Font Size=+2>ins</Font> (g_barbre.c 152)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+
+<pre>
+ ins(void *x, btreenode *t, void **y, btreenode **u, int (*fcmp)(const void *,const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+Fonction interne d'insertion de l'objet 'x' dans le B-arbre
+               de racine 't'. En cas de r&eacute;ussite partielle, l'objet '*y' et
+               le pointeur '*u' restent en attente d'insertion. Une r&eacute;ussite
+               partielle peut se produire quand l'insertion n&eacute;cessite de
+               scinder un noeud en 2 (trop de feuilles &agrave; ce noeud).
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+SUCCES, CLEDUPLIQUEE ou INSERTIONPARTIELLE
+<p>
+
+
+
+<p><hr></p>
+<a name="btreeinserer"></a>
+<center><Font Size=+2>btreeinserer</Font> (g_barbre.c 277)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ btreeinserer(void *x, btreenode *t, int (*fcmp)(const void *,const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+Cette fonction ins&egrave;re un &eacute;l&eacute;ment 'x' dans le B-arbre de
+               racine 't', en utilisant la fonction de comparaison 'fcmp'.
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+La nouvelle racine, qui peut &ecirc;tre diff&eacute;rente de l'ancienne si
+          l'insertion a n&eacute;cessit&eacute; de casser le noeud racine.
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+On d&eacute;finit d'abord une fonction de comparaison, par exemple une
+           fonction comparant des cha&icirc;nes et renvoyant un r&eacute;sultat inverse de
+           la fonction strcmp:
+  
+<p>
+
+  <pre>
+  int cmpstr(const void *k1, const void *k2)
+  {
+    return -strcmp((char*)k1, (char*)k2);
+  }
+  </pre>
+  
+<p>
+
+  On suppose que l'on a d&eacute;clar&eacute; une variable <pre>racine</pre> qui d&eacute;signe
+  la racine d'un B-arbre contenant des cha&icirc;nes de caract&egrave;res.
+  
+<p>
+
+  On ins&egrave;re une cha&icirc;ne <pre>chaine</pre> dans ce B-arbre de la fa&ccedil;on
+  suivante:
+  
+<p>
+
+  <pre>
+  racine=btreeinserer(strdup(chaine), racine, cmpstr);
+  </pre>
+<p>
+
+
+<p><hr></p>
+<a name="btreechercher"></a>
+<center><Font Size=+2>btreechercher</Font> (g_barbre.c 321)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ btreechercher(void *x, btreenode *t, int (*fcmp)(const void *,const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+Fonction permettant de rechercher l'adresse de l'&eacute;l&eacute;ment
+               &eacute;gal &agrave; 'x' dans le B-arbre de racine 't', en utilisant la
+               fonction de comparaison 'fcmp'.
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+Un pointeur vers l'&eacute;l&eacute;ment &eacute;gal &agrave; 'x', ou NULL si aucun ne
+          correspond.
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+Voir la fonction <a href="#btreeinserer">btreeinserer</a> pour avoir une d&eacute;finition de la
+           fonction de comparaison.
+  
+<p>
+
+  On suppose qu'on a d&eacute;clar&eacute; une variable <pre>char *resultat;</pre>, et
+  qu'on veut rechercher la cha&icirc;ne 'DUPONT'. L'appel se fera comme suit:
+  
+<p>
+
+  <pre>
+  resultat=btreechercher('DUPONT', racine, cmpstr);
+  </pre>
+<p>
+
+
+<p><hr></p>
+<a name="supp"></a>
+<center><Font Size=+2>supp</Font> (g_barbre.c 350)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ supp(void *x, btreenode *t, btreenode *racine, int (*fcmp)(const void *,const void *),void (*libere)(const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+Fonction interne de suppression de l'&eacute;l&eacute;ment &eacute;gal &agrave; 'x' du
+               B-arbre de racine 'racine', en commen&ccedil;ant au noeud 't'.
+               En cas de code-retour CARENCE, la fonction appelante doit
+               joindre les noeuds fr&ecirc;res ou parents pour combler les manques.
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+SUCCES, ABSENCE, ou CARENCE.
+<p>
+
+
+
+<p><hr></p>
+<a name="btreeretirernoeud"></a>
+<center><Font Size=+2>btreeretirernoeud</Font> (g_barbre.c 530)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ btreeretirernoeud(void *x, btreenode *t, int (*fcmp)(const void *,const void *),void (*libere)(const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+Fonction permettant de supprimer l'&eacute;l&eacute;ment &eacute;gal &agrave; 'x' du
+               B-arbre de racine 't', en utilisant la fonction de comparaison
+               'fcmp'.
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+La nouvelle racine, qui peut &ecirc;tre diff&eacute;rente de l'ancienne si la
+          fonction a du en cr&eacute;er une autre.
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+On suppose que la fonction de comparaison est la m&ecirc;me que celle
+           d&eacute;finie pour <a href="#btreeinserer">btreeinserer</a>. On doit d&eacute;finir une fonction de
+           lib&eacute;ration de m&eacute;moire pour les &eacute;l&eacute;ments de ce B-arbre. Cette
+           fonction s'appuie sur la fonction standard 'free', et sera
+           construite comme suit:
+  
+<p>
+
+  <pre>
+  void freestr(const void *k)
+  {
+    if (k)
+      free((char*)k);
+  }
+  </pre>
+  
+<p>
+
+  Un avertissement (warning) peut appara&icirc;tre lors de la compilation sur
+  l'appel de la fonction 'free', il peut &ecirc;tre ignor&eacute; sans complication.
+  
+<p>
+
+  Pour supprimer l'&eacute;l&eacute;ment &eacute;gal &agrave; la cha&icirc;ne 'DUPONT', on appelle la fonction
+  comme suit:
+  
+<p>
+
+  <pre>
+  racine=btreeretirernoeud('DUPONT', racine, cmpstr, freestr);
+  </pre>
+<p>
+
+
+<p><hr></p>
+<a name="rechsup"></a>
+<center><Font Size=+2>rechsup</Font> (g_barbre.c 558)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ rechsup(void *x, btreenode *t, void **y, int (*fcmp)(const void *,const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+
+<p>
+
+
+<p><hr></p>
+<a name="btreecherchersuivant"></a>
+<center><Font Size=+2>btreecherchersuivant</Font> (g_barbre.c 606)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ btreecherchersuivant(void *x, btreenode *t, int (*fcmp)(const void *,const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+
+<p>
+
+
+<p><hr></p>
+<a name="rechinf"></a>
+<center><Font Size=+2>rechinf</Font> (g_barbre.c 631)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ rechinf(void *x, btreenode *t, void **y, int (*fcmp)(const void *,const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+
+<p>
+
+
+<p><hr></p>
+<a name="btreechercherprecedent"></a>
+<center><Font Size=+2>btreechercherprecedent</Font> (g_barbre.c 678)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ btreechercherprecedent(void *x, btreenode *t, int (*fcmp)(const void *,const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+
+<p>
+
+
+<p><hr></p>
+<a name="btreeapplique"></a>
+<center><Font Size=+2>btreeapplique</Font> (g_barbre.c 704)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ btreeapplique(btreenode *t, void (*applique)(const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+
+<p>
+
+
+<p><hr></p>
+<a name="btreefirstthat"></a>
+<center><Font Size=+2>btreefirstthat</Font> (g_barbre.c 730)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ btreefirstthat(btreenode *t, void **v, int (*verifie)(const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+
+<p>
+
+
+<p><hr></p>
+<a name="btreepremierqui"></a>
+<center><Font Size=+2>btreepremierqui</Font> (g_barbre.c 764)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ btreepremierqui(btreenode *t, int (*verifie)(const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+
+<p>
+
+
+<p><hr></p>
+<a name="btreepremier"></a>
+<center><Font Size=+2>btreepremier</Font> (g_barbre.c 787)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ btreepremier(btreenode *t);
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+
+<p>
+
+
+<p><hr></p>
+<a name="btreedernier"></a>
+<center><Font Size=+2>btreedernier</Font> (g_barbre.c 812)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ btreedernier(btreenode *t);
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+
+<p>
+
+
+<p><hr></p>
+<a name="videbarbre"></a>
+<center><Font Size=+2>videbarbre</Font> (g_barbre.c 837)</center>
+
+<Font Size=+1><u>Syntaxe</u></Font><p>
+
+
+<pre>
+ #include &lt;g_barbre.h&gt;
+</pre>
+
+
+<pre>
+ videbarbre(btreenode *t, void (*libere)(const void *));
+</pre>
+
+
+
+
+<Font Size=+1><u>Description</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Valeur de retour</u></Font><p>
+
+
+<p>
+
+
+<Font Size=+1><u>Exemple</u></Font><p>
+
+
+<p>
+
+
+
+
+
+</body>
+</html>
