@@ -1,0 +1,362 @@
+Comment interprêter la VA:
+--------------------------
+
+La VA est une valeur signée par la clé privée du GIE CB (clé RSA).
+Pour pouvoir l'exploiter, vous devez au préalable effectuer un chiffrement RSA avec la clé publique correspondante. Les 3 clés publiques utilisées ont été diffusées sur Internet il y a un peu plus d'un an. Une fois que vous avez obtenu l'information signée (après l'opération RSA), vous obtenez un nombre de 320 bits (80 octets), représenté comme suit:
+AB CD EF GH IJ KL MN OP QR ST UV WX YZ ab cd ef gh ij kl mn
+AB CD EF GH IJ KL MN OP QR ST UV WX YZ ab cd ef gh ij kl mn
+
+Vous voyez que le message est découpé en 2 zones identiques de 160 octets chacune.
+
+Vous avez déjà trouvé que la partie 'L..d' correspond à votre numéro de carte bancaire (oui, ce numéro fait bien 19 chiffres, et la plupart du temps seuls les 16 premiers sont significatifs).
+
+Vous avez également trouvé que la partie 'g..j' correspond à la date de début de validité de votre carte (format AAMM), et la partie 'k..n' correspond à la date de fin de validité de cette même carte.
+
+La partie 'ef' correspond aux 8 bits de poids fort du code usage (très souvent 101, donc 10, parfois 121, donc 12).
+
+Pour ce qui se trouve avant 'L', ça se complique légèrement:
+ - les 7 bits de poids fort de 'AB' doivent être égaux à zero, ainsi que la partie 'F..K', en ne considérant que le bit de poids faible de 'F' (vous oubliez les 3 bits de poids fort, ils servent à autre chose)
+ - les 11 bits à partir du bit de poids faible de B (donc le bit de poids faible de 'B',  les quartets 'C' et 'D', et les 2 bits de poids fort de 'E') sont égaux aux 11 bits de poids fort du code fabricant, que l'on trouve dans la Zone de Fabrication (donc à partir du bit n° 176 de la ZF, en commençant à 0)
+ - il reste 5 bits: les 2 bits de poids faible de 'E', et les 3 bits de poids fort de 'F'. Ces 5 bits sont égaux aux 5 bits de poids fort du numéro de série de votre carte, que l'on trouve encore dans la Zone de Transaction (à partir du bit n° 193 de la ZF, toujours en commençant à 0)
+
+Et voilà, vous avez toutes les informations pour interprêter votre VA.
+
+
+
+    Taille des données signées = 305 bits
+    Données signées:
+        {00 01 0A 00 00 0[4 53 38 25 75 09 38 20 9F FF] 10 [00 05] [02 06]}
+        {00 01 0A 00 00 0[4 53 38 25 75 09 38 20 9F FF] 10 [00 05] [02 06]}
+         --     ---------
+         les 7 premiers bits OR les 21 bits à partir du bit n°23 doivent être égaux à zéro
+
+          ------         
+         les 11 bits à partir du bit n° 7 sont égaux aux 11 bits à partir du bit n° 176 de la Zone
+         de Fabrication (code fabricant)
+
+               --
+         les 5 bits à partir du bit n° 18 sont égaux aux 5 bits à partir du bit n° 193 de la Zone
+         de Fabrication (5 premiers bits du numéro de série)
+
+                          ----------------------------
+         numéro de carte/compte
+                                                        --
+         les 8 bits à partir du bit n° 120 sont égaux aux 8 premiers bits du code usage
+
+                                                            -----
+         date de début de validité
+
+                                                                    -----
+         date de fin de validité
+
+    Bloc prestataire 02 (Identite Porteur)
+    --------------------------------------
+    Code enreg. = 00
+    NumCarte = 4533825750938209FFF
+    Code Usage = 101 (Internationale - tous retraits)
+    Date de début de validité = 00/05
+    Code langue = 250
+    Date de fin de validité = 02/06
+    Code devise = 250
+    Exposant = 3 (centimes)
+    BIN de référence = 561264
+    Nom du porteur = MR ERWANN ABALEA
+    
+ª Contenu de la Zone des Transactions ª
+=======================================
+30 00 00 09 32 D0 4A 6F 33 E0 84 D0 33 E2 71 00 - 0...2.Jo3...3.q.
+33 E0 32 87 33 E9 73 18 33 F0 70 4E 30 00 00 10 - 3.2.3.s.3.pN0...
+33 20 2C 24 33 30 88 54 33 32 4D D8 33 38 BF 4F - 3 ,$30.T32M.38.O
+30 00 00 11 33 90 94 AF 33 C9 08 1F 33 C8 A6 08 - 0...3...3...3...
+33 C8 51 2C 33 D8 8D 04 33 E9 09 A0 33 F1 73 18 - 3.Q,3...3...3.s.
+30 00 00 12 33 10 2F F8 33 10 2A F8 33 38 3E 1C - 0...3./.3.*.38>.
+33 48 7C 1A 33 48 4E D9 33 80 92 6D 33 88 7D 00 - 3H|.3HN.3..m3.}.
+33 98 4C 2C 33 A0 7E 90 33 B0 E9 34 33 B8 75 12 - 3.L,3.~.3..43.u.
+33 B8 7E F4 33 B8 A6 45 33 B9 03 EC 33 C0 32 C8 - 3.~.3..E3...3.2.
+33 C0 44 7F 33 D8 53 34 33 E8 5E F6 33 F0 38 E0 - 3.D.3.S43.^.3.8.
+33 F0 A4 E8 33 F8 7E C2 30 00 01 01 33 09 73 18 - 3...3.~.0...3.s.
+33 28 E1 64 33 30 33 F9 33 50 3E E4 33 60 69 78 - 3(.d303.3P>.3`ix
+33 68 8B 10 33 68 D6 10 33 80 3A 34 33 80 93 A8 - 3h..3h..3.:43...
+33 C1 73 18 33 D8 24 CC 30 00 01 02 33 10 58 48 - 3.s.3.$.0...3.XH
+33 18 8C FF 33 48 30 61 33 50 9B 46 33 88 C0 03 - 3...3H0a3P.F3...
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF 66 04 10 E3 73 7F 42 40 - ........f...s.B@
+75 7F 42 40 77 73 0D 40 79 7F 42 40 6E 11 04 E3 - u.B@ws.@y.B@n...
+71 47 01 09 6E 00 0C F3 FF FF FF FF FF FF FF FF - qG..n...........
+70 FF 8F FF FF FF FF FF                         - p.......
+
+
+    Transactions
+    ------------
+    
+    30 00 00 09  0011 0000 0000 0000 0000 0000 0000 1001
+                      ---                                type: bannière date (00)
+                                               --------- mois: 09 (septembre)
+                                     ---------           année: 00 (2000)
+    32 D0 4A 6F  0011 0010 1101 0000 0100 1010 0110 1111
+                      ---                                type: achat au comptant (01)
+                         -                               hors plafond
+                           ------                        jour: 26
+                                 ----------------------- montant: 19055 unités
+    33 E0 84 D0  0011 0011 1110 0000 1000 0100 1101 0000
+                      ---                                type: achat au comptant (01)
+                         -                               sous plafond
+                           ------                        jour: 28
+                                 ----------------------- montant: 34000 unités
+    33 E2 71 00  
+    33 E0 32 87  
+    33 E9 73 18  
+    33 F0 70 4E  
+    30 00 00 10  
+    33 20 2C 24  
+    33 30 88 54  
+    33 32 4D D8  
+    33 38 BF 4F  
+    30 00 00 11  
+    33 90 94 AF  
+    33 C9 08 1F  
+    33 C8 A6 08  
+    33 C8 51 2C  
+    33 D8 8D 04  
+    33 E9 09 A0  
+    33 F1 73 18  
+    30 00 00 12  
+    33 10 2F F8  
+    33 10 2A F8  
+    33 38 3E 1C  
+    33 48 7C 1A  
+    33 48 4E D9  
+    33 80 92 6D  
+    33 88 7D 00  
+    33 98 4C 2C  
+    33 A0 7E 90  
+    33 B0 E9 34  
+    33 B8 75 12  
+    33 B8 7E F4  
+    33 B8 A6 45  
+    33 B9 03 EC  
+    33 C0 32 C8  
+    33 C0 44 7F  
+    33 D8 53 34  
+    33 E8 5E F6  
+    33 F0 38 E0  
+    33 F0 A4 E8  
+    33 F8 7E C2  
+    30 00 01 01  
+    33 09 73 18  
+    33 28 E1 64  
+    33 30 33 F9  
+    33 50 3E E4  
+    33 60 69 78  
+    33 68 8B 10  
+    33 68 D6 10  
+    33 80 3A 34  
+    33 80 93 A8  
+    33 C1 73 18  
+    33 D8 24 CC  
+    30 00 01 02  0011 0000 0000 0000 0000 0001 0000 0010
+                      ---                                type: bannière date(00)
+                                               --------- mois: 02 (février)
+                                     ---------           année: 01 (2001)
+    33 10 58 48  0011 0011 0001 0000 0101 1000 0100 1000
+                      ---                                type: achat au comptant (01)
+                         -                               sous plafond
+                           ------                        jour: 02
+                                 ----------------------- montant: 22600 unités
+    33 18 8C FF  
+    33 48 30 61  
+    33 50 9B 46  
+    33 88 C0 03  0011 0011 1000 1000 1100 0000 0000 0011
+                      ---                                type: achat au comptant (01)
+                         -                               sous plafond
+                           ------                        jour: 17
+                                 ----------------------- montant: 49155 unités
+
+    
+    Bloc prestataire 04 (Plafonds)
+    ------------------------------
+    Achats au comptant, hebdomadaire,   10000.00
+    Achats Ó crÚdit, hebdomadaire,   10000.00
+    Retraits, hebdomadaire,    2000.00
+    Virements, hebdomadaire,   10000.00
+
+===============================================================================
+    Taille des données signées = 303 bits
+    Données signées:
+        {00 00 46 00 00 0[4 53 38 25 75 09 38 10 0F FF] [10 98] [05 00] 06}
+        {00 00 46 00 00 0[4 53 38 25 75 09 38 10 0F FF] [10 98] [05 00] 06}
+
+    Bloc prestataire 02 (Identite Porteur)
+    --------------------------------------
+    Code enreg. = 00
+    NumCarte = 4533825750938100FFF
+    Code Usage = 101 (Internationale - tous retraits)
+    Date de début de validité = 98/05
+    Code langue = 250
+    Date de fin de validité = 00/06
+    Code devise = 250
+    Exposant = 3 (centimes)
+    BIN de référence = 561264
+    Nom du porteur = MR ERWANN ABALEA
+
+ª Contenu de la Zone des Transactions ª
+=======================================
+30 00 00 05 32 E0 36 4C 33 F0 B3 4C 33 F0 42 68 - 0...2.6L3..L3.Bh 
+33 F9 6B 48 30 00 00 06 33 10 24 4A 33 18 3C D2 - 3.kH0...3.$J3.<.
+33 18 40 7E 33 20 1F 40 33 20 70 80 33 28 5D C0 - 3.@~3 .@3 p.3(].
+33 28 37 A5 33 30 55 28 33 40 56 54 33 48 61 44 - 3(7.30U(3@VT3HaD
+33 50 62 0C 33 58 33 72 33 60 4E 84 33 70 68 B0 - 3Pb.3X3r3`N.3ph.
+33 78 29 04 33 78 64 C8 33 80 7D BE 33 88 61 A8 - 3x).3xd.3.}.3.a.
+33 A0 BF 68 33 A8 5E 24 33 A8 49 0C 33 C0 84 08 - 3..h3.^$3.I.3...
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF - ................
+FF FF FF FF FF FF FF FF FF FF FF FF 66 04 10 E3 - ............f...
+73 7F 42 40 75 7F 42 40 77 73 0D 40 79 7F 42 40 - s.B@u.B@ws.@y.B@
+6E 11 04 E3 71 40 01 09 6E 00 0C F3 FF FF FF FF - n...q@..n.......
+FF FF FF FF 70 FF 8F FF FF FF FF FF             - ....p.......
+
+
+    Transactions
+    ------------
+    30 00 00 05  0011 0000 0000 0000 0000 0000 0000 0101 
+                      ---                                type: bannière date (00)
+                                               --------- mois: 05 (mai)
+                                     ---------           année: 00 (2000)
+    32 E0 36 4C  0011 0010 1110 0000 0011 0110 0100 1100
+                      ---                                type: achat au comptant (01)
+                         -                               hors plafond
+                                 ----------------------- montant: 13900 unités
+                           ------                        jour: 28
+    33 F0 B3 4C  0011 0011 1111 0000 1011 0011 0100 1100
+                      ---                                type: achat au comptant (01)
+                         -                               sous plafond
+                                 ----------------------- montant: 45900 unités
+                           ------                        jour: 30
+    33 F0 42 68  0011 0011 1111 0000 0100 0010 0110 1000
+                      ---                                type: achat au comptant (01)
+                         -                               sous plafond
+                                 ----------------------- montant: 17000 unites
+                           ------                        jour: 30
+    33 F9 6B 48  0011 0011 1111 1001 0110 1011 0100 1000
+                      ---                                type: achat au comptant (01)
+                         -                               sous plafond
+                                 ----------------------- montant: 93000 unités
+                           ------                        jour: 31
+    30 00 00 06  0011 0000 0000 0000 0000 0000 0000 0110
+                      ---                                = 0, bannière date
+                                               --------- mois: 06 (juin)
+                                     ---------           année: 00 (2000)
+    33 10 24 4A  0011 0011 0001 0000 0010 0100 0100 1010
+                      ---                                type: achat au comptant (01)
+                         -                               sous plafond
+                                 ----------------------- montant: 9290 unités
+                           ------                        jour: 02
+    33 18 3C D2  
+    33 18 40 7E  
+    33 20 1F 40  
+    33 20 70 80  
+    33 28 5D C0  
+    33 28 37 A5  
+    33 30 55 28  
+    33 40 56 54  
+    33 48 61 44  
+    33 50 62 0C  
+    33 58 33 72  
+    33 60 4E 84  
+    33 70 68 B0  
+    33 78 29 04  
+    33 78 64 C8  
+    33 80 7D BE  
+    33 88 61 A8  
+    33 A0 BF 68  
+    33 A8 5E 24  
+    33 A8 49 0C  
+    33 C0 84 08  
+    
+    
+    Bloc prestataire 04 (Plafonds)
+    ------------------------------
+    Achats au comptant, hebdomadaire,   10000.00
+    Achats Ó crÚdit, hebdomadaire,   10000.00
+    Retraits, hebdomadaire,    2000.00
+    Virements, hebdomadaire,   10000.00
+===============================================================================
+    Taille des données signées = 305 bits
+    Données signées:
+        {00 01 0A 00 00 0[5 13 18 23 58 05 89 81 6F FF] [10 00] [11 01] 10}
+        {00 01 0A 00 00 0[5 13 18 23 58 05 89 81 6F FF] [10 00] [11 01] 10}
+
+    Bloc prestataire 02 (Identite Porteur)
+    --------------------------------------
+    Code enreg. = 00
+    NumCarte = 5131823580589816FFF
+    Code Usage = 101 (Internationale - tous retraits)
+    Date de début de validité = 00/11
+    Code langue = 250
+    Date de fin de validité = 01/10
+    Code devise = 250
+    Exposant = 3 (centimes)
+    BIN de référence = 561264
+    Nom du porteur = MME LOREINE C ABALEA
+===============================================================================
+
+Transactions
+------------
+30 00 03 05   0011 0000 0000 0000 0000 0011 0000 0101
+                   ---                                =0, bannière date
+                                            --------- mois: 05 (mai)
+                                  ---------           année: 03 (2003)
+32 78 3E 85   0011 0010 0111 1000 0011 1110 1000 0101
+                   ---                                type: achat au comptant (01)
+                      -                               hors plafond
+                        ------                        jour: 15
+                              ----------------------- montant: 16005 unités (160,05 francs)
+33 78 39 3E 
+33 78 6B 9E
+33 A0 5E B4 33 A0 6B 9E 33 A8 32 7A 33 D0 F2 24
+33 F0 35 2B 33 F8 C3 A9 33 F8 39 E9 33 F8 74 62
+30 00 03 06   0011 0000 0000 0000 0000 0011 0000 0110
+                   ---                                =0, bannière date
+                                  ---------           année: 03 (2003)
+                                            --------- mois: 06 (juin)
+33 18 6E 70   0011 0011 0001 1000 0110 1110 0111 0000
+                   ---                                type: achat au comptant (01)
+                      -                               sous plafond
+                        ------                        jour: 03
+                              ----------------------- montant: 28272 unités (282,72 francs)
+33 30 5E CE   0011 0011 0011 0000 0101 1110 1100 1110
+                   ---                                type: achat au comptant (01)
+                      -                               sous plafond
+                        ------                        jour: 06
+                              ----------------------- montant: 24270 unités (242,70 francs)
+33 38 5B AE   0011 0011 0011 1000 0101 1011 1010 1110
+                   ---                                type: achat au comptant (01)
+                      -                               sous plafond
+                        ------                        jour: 07
+                              ----------------------- montant: 23470 unités (234,70 francs)
+33 88 47 3C   0011 0011 1000 1000 0100 0111 0011 1100
+                   ---                                type: achat au comptant (01)
+                      -                               sous plafond
+                        ------                        jour: 09
+                              ----------------------- montant: 18236 unités (182,36 francs)
+FF FF FF FF FF FF FF FF FF FF FF FF
+
