@@ -1,7 +1,10 @@
-static char rcsid[]="$Id: fbcdump.c,v 1.7 2003/06/24 17:57:29 eabalea Exp $";
+static char rcsid[]="$Id: fbcdump.c,v 1.8 2004/02/02 00:50:11 eabalea Exp $";
 
 /*
  * $Log: fbcdump.c,v $
+ * Revision 1.8  2004/02/02 00:50:11  eabalea
+ * no message
+ *
  * Revision 1.7  2003/06/24 17:57:29  eabalea
  * Ajout d'une conversion Francs->Euros automatique dès que la devise 0x250 est détectée
  *
@@ -44,6 +47,85 @@ static char rcsid[]="$Id: fbcdump.c,v 1.7 2003/06/24 17:57:29 eabalea Exp $";
 #ifndef MAX_ATR_SIZE
 #define MAX_ATR_SIZE 32
 #endif
+
+/* Todo: intégrer les infos ci-dessous, à propos des clés allongées (VS):
+Crypto: Les clés 768, 896, 1024...
+Posté le 08 Dec 2001 à 13:23:00 par
+
+[Cartes à puces] upag a écrit : "Concaténations d'infos sur clés 768:
+
+Concernant les clés pub VS, il en existe 2 de 768 bits*, 2 de 896 bits et 2 de 1024 bits + peut être des clés de test.
+Celles de 1024, on est pas prêt de les voir dans les cartes, car les TPE rament trop pour vérifier la VS.
+
+Header VS = 2E 16 XX CLE CCE
+XX (8 bits) est la longueur (en octets) du prestataire 16, header exclus.
+CLE (3 bits) est l'indice de la clé publique à utiliser :
+0 : test, 768,896 ou 1024
+1 : ClePub 1, 768 bits
+2 : ClePub 2, 768 bits
+3 : ClePub 3, 896 bits
+4 : ClePub 4, 896 bits
+5 : ClePub 5, 1024 bits
+6 : ClePub 6, 1024 bits
+
+Quelques explications :
+
+00 / 01 / X / 00 / SHA-1(redondance)
+
+X = chaine de FFh dont la longueur est égale à la longueur en octets de la clé publique - 23
+(donc pour 768 = 96 octets on a 96-23=73 octets FFh)
+SHA-1 = Secure Hash Algorithm 1
+redondance = 7 bits à 0 + 11 bits n° encarteur + 26 bits n° série + 21 bits à 0 +
+76 bits n° de carte (PAN) + 8 bits de PF du code service (si code service = 101, mettre 10) + les 16 bits de la date debut + les 16 bis de la date de fin; donc en tout 160 bits
+
+Précisions :
+Les 20 octets à la fin (de 9F 84 à AD 8B) sont le résultat du SHA-1 sur une valeur d'entrée constitué de :
+redondance = 7 bits à 0 + 11 bits n° encarteur + 26 bits n° série +
+76 bits n° de carte (PAN) + 8 bits de PF du code service + les 16 bits de la date début + les 16 bis de la date de fin; donc en tout 160 bits )
+Exemple bidon :
+entrée = 0000451e5aa (0 + encarteur + série)
++ 4578 1234 5678 9012 fff + 10 + 9912 + 0101
+
+Tu donnes ces 160 bits à SHA.EXE et tu vas trouver : 04 a0 e8 67 14 etc etc
+
+Tu fais la même chose avec une vraie carte, tu calcules le sha et tu déchiffre la VS.
+Si le sha que tu trouves en déchiffrant la VS est pareille que celle calculée a partir des donnés de la carte, ta carte est bonne.
+
+Donc, ca empèche pas de cloner, juste de faire des "vraies" fausses cartes. sauf si qq'1 trouve la clé privée :=)
+
+Annexe:
+-------
+
+Clé publique 2 (768):
+A3 99 A4 AD E1 BC EA 21 7F B7 74 B4 70 86 0D D1
+3B 34 F9 37 99 15 85 2D 9F D1 26 90 C4 5C 36 EC
+2C 3F E6 C9 77 0A 53 8A C6 36 50 47 44 70 3E 38
+47 FF 0E B9 94 64 EA F8 4D 56 27 D5 03 2F 5E 7D
+C0 87 6E 93 EB 4B AB F2 0D 10 A6 DC 13 7E 25 E8
+00 8B DE 57 7D 44 7C 50 67 4C B5 13 ED 47 05 15
+
+Clé publique 3 (896):
+9E EA E2 71 B5 0F BE 5C 6C 82 52 22 07 F2 D0 3F
+E0 5E 4F 96 41 E8 C7 34 F6 B6 85 DB A6 7F 94 04
+CF 13 0D 12 79 89 F0 A5 1F 78 B1 96 98 36 05 3F
+EA FD E5 1E 34 CD 3B F3 04 4F 8A 46 FD AD C7 7A
+49 29 C9 8A 10 2D 41 D2 05 BD 11 93 64 12 02 3F
+79 A3 5A 8C 75 C8 4A 76 F1 AB 4D BE 4A 45 67 BE
+1E 4D 87 83 C4 60 B9 36 A0 73 94 9F DF 00 B3 B1
+
+Auteurs inconnus à ce jour
+
+Note: L'objet de la censure :("
+*/
+
+/* Todo: autres infos sur les clés 768 bits:
+
+avec pub768dec = 1550880802783769298423921500751307878471020215206711102793111990113875394553459999757605304671735856091597555389797408938173344043674704780986390069906679096728933081405044935969514508676239942493440750589270015739962374529363251827
+
+c'est curieux, quand je transforme la clepub0 de geoli de base 10 à base 16, je trouve ça :
+
+FFBAE2B499427CDF89A402CE0517100F9411BDABC3347540C55846A026523FA243AFC62D3B342B3AD5D5EC28FCF37AE546DD5E85628B31E7A0229F62A5F56E2E1FAD4B0B48677CCE728D6937FCBE18DFB673DC3E8CD4E9E18C0046C672A09273
+*/
 
 /* Todo: intégrer les infos du programme ci-dessous:
  ***************************************************
