@@ -1,7 +1,14 @@
-static char rcsid[]="$Id: rndsig.c,v 1.5 2001/02/03 18:22:58 eabalea Exp $";
+static char rcsid[]="$Id: rndsig.c,v 1.6 2003/12/22 11:49:33 eabalea Exp $";
 
 /*
  * $Log: rndsig.c,v $
+ * Revision 1.6  2003/12/22 11:49:33  eabalea
+ * rndsig peut maintenant accepter des arguments, dont le chemin vers le
+ * fichier de config.
+ * rndsig ignore maintenant les SIGPIPE, pour ne pas planter avec Pine
+ * (qui fait un fstat() pour s'apercevoir que le fichier a une taille
+ * nulle, et le fermer immédiatement)
+ *
  * Revision 1.5  2001/02/03 18:22:58  eabalea
  * Support des signatures multi-lignes. Le mot-clé 'Quotes' désigne maintenant les
  * signatures multi-lignes. Pour les signatures simple-ligne, utiliser le mot-clé
@@ -45,9 +52,11 @@ unsigned char rcfile[MAXNAMLEN+1] = "~/.rndsigrc";
 unsigned char output[MAXNAMLEN+1] = "~/.signature";
 unsigned char template[MAXNAMLEN+1] = "";
 unsigned char quotesfile[MAXNAMLEN+1] = "";
+unsigned char taglinesfile[MAXNAMLEN+1] = "";
 unsigned char **sigs;
 unsigned char fixedsig[1024];
 unsigned long int nbsigs = 0;
+int debug = 0;
 FILE *outputpipe;
 int insertdashes = 0;
 enum {
@@ -55,6 +64,21 @@ enum {
   oReverse,
   oRandom
 } order = oRandom;
+
+
+/******
+ * void printhelp(void)
+ *
+ * This function displays a help text and quits the program.
+ ******/
+void printhelp(void)
+{
+  printf("rndsig [option...]\n");
+  printf("\n");
+  printf("  -c,--config    config file (default is ~/.rndsigrc)\n");
+  printf("  -d,--debug     activate debug mode (no daemon, and some messages)\n");
+  exit(1);
+}
 
 
 /******
@@ -66,6 +90,9 @@ void readtaglines(void)
 {
   FILE *f;
   char buf[1024];
+
+  if (debug)
+    printf("Entering readtaglines()\n");
 
   if (!(f=fopen(taglinesfile, "r")))
   {
@@ -81,6 +108,12 @@ void readtaglines(void)
     sigs[nbsigs++]=strdup(buf);
   }
   fclose(f);
+
+  if (debug)
+    printf("Read %lu signatures\n", nbsigs);
+
+  if (debug)
+    printf("Leaving readtaglines()\n");
 }
 
 
@@ -96,6 +129,9 @@ void readquotes(void)
        *quote=NULL;
   int quotelen=0,
       endquote=0;
+
+  if (debug)
+    printf("Entering readquotes\n");
 
   if (!(f=fopen(quotesfile, "r")))
   {
@@ -144,6 +180,12 @@ void readquotes(void)
     }
   }
   fclose(f);
+
+  if (debug)
+    printf("Read %lu signatures\n", nbsigs);
+
+  if (debug)
+    printf("Leaving readquotes()\n");
 }
 
 
@@ -155,6 +197,8 @@ void readquotes(void)
 void SIGHUPhandler(int signum)
 {
   int i;
+
+  printf("Entering SIGHUPhandler()\n");
 
   for(i=0; i < nbsigs; i++)
     free(sigs[i]);
@@ -169,6 +213,9 @@ void SIGHUPhandler(int signum)
      - re-read the resource file
      - reopen the output file
   */
+  
+  if (debug)
+    printf("Leaving SIGHUPhandler()\n");
 }
 
 
@@ -182,14 +229,37 @@ void SIGHUPhandler(int signum)
 void SIGQUIThandler(int signum)
 {
   int i;
+
+  if (debug)
+    printf("Entering SIGQUIThandler()\n");
   
   for(i=0; i < nbsigs; i++)
     free(sigs[i]);
   free(sigs);
   free(template);
-  fclose(outputpipe);
-  unlink(output);
+  //fclose(outputpipe);
+  //unlink(output);
   exit(-1);
+}
+
+
+/******
+ * void SIGPIPEhandler(int signum)
+ *
+ * SIGPIPE signal handler
+ * Does nothing, just to avoid being kicked by someone opening and
+ * closing the signature file without reading anything (like Pine
+ * does, for example).
+ ******/
+void SIGPIPEhandler(int signum)
+{
+  int i;
+
+  if (debug)
+    printf("Entering SIGPIPEhandler()\n");
+  
+  if (debug)
+    printf("Leaving SIGPIPEhandler()\n");
 }
 
 
@@ -429,13 +499,60 @@ void readrcfile(void)
 
 
 /******
- * void init(void)
+ * void init(int argc, char **argv)
  *
  * We start by reading the rc file, and populate the necessary tables
  * in memory
  ******/
-void init(void)
+void init(int argc, char **argv)
 {
+  int c;
+  int digit_optind = 0;
+
+  while (1) {
+    int this_option_optind = optind ? optind : 1;
+    int option_index = 0;
+    static struct option long_options[] = {
+      { "config", 1, 0, 'c' },
+      { "debug", 0, 0, 'd' },
+      { "help", 0, 0, 'h' },
+      { 0, 0, 0, 0 }
+    };
+
+    c = getopt_long (argc, argv, "c:hd",
+	long_options, &option_index);
+    if (c == -1)
+      break;
+
+    switch (c) {
+      case 'c':
+	memset(rcfile, 0, sizeof(rcfile));
+	strncpy(rcfile, optarg, sizeof(rcfile));
+	break;
+
+      case 'h':
+	printhelp();
+	break;
+
+      case 'd':
+	debug=1;
+	break;
+
+      case '?':
+	break;
+
+      default:
+	printf ("?? getopt returned character code 0%o ??\n", c);
+    }
+  }
+
+  if (optind < argc) {
+    printf ("non-option ARGV-elements: ");
+    while (optind < argc)
+      printf ("%s ", argv[optind++]);
+    printf ("\n");
+  }
+
   srand((unsigned int)time(NULL));
   readrcfile();
 }
@@ -448,19 +565,37 @@ void init(void)
 int main(int argc, char **argv)
 {
   FILE *f;
-  int cursig=0;
+  int cursig = 0;
+  pid_t child = 0;
   
-  init();
+  init(argc, argv);
   
   printf("Ready to serve...\n");
 
   signal(SIGHUP, SIGHUPhandler);
+  //signal(SIGQUIT, SIGQUIThandler);
+  signal(SIGPIPE, SIGPIPEhandler);
   
-  if (!fork())
+  if (!debug)
+    child=fork();
+
+  if (!child)
   {
     while (1)
     {
+      if (debug)
+	printf("Attempting to open %s\n", output);
+      
       f=fopen(output, "w");
+      if (!f)
+      {
+	fprintf(stderr, "Unable to open '%s'\n", output);
+	continue;
+      }
+
+      if (debug)
+	printf("Outputing a signature\n");
+      
       if (insertdashes)
         fprintf(f, "-- \n");
       fprintf(f, "%s", fixedsig);
@@ -480,10 +615,21 @@ int main(int argc, char **argv)
                        break;
         default      : break;
       }
+      
+      if (debug)
+	printf("Closing the file\n");
+      
       fclose(f);
+
+      if (debug)
+	printf("Sleeping for 1 second\n");
+      
       sleep(1);
     }
   }
 
+  if (debug)
+    printf("Quitting\n");
+  
   return 0;
 }
