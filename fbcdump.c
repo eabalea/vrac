@@ -1,9 +1,13 @@
-static char rcsid[]="$Id: fbcdump.c,v 1.1 2000/07/09 10:48:15 eabalea Exp $";
+static char rcsid[]="$Id: fbcdump.c,v 1.2 2000/07/09 14:16:30 eabalea Exp $";
 
 /*
  * $Log: fbcdump.c,v $
- * Revision 1.1  2000/07/09 10:48:15  eabalea
- * Initial revision
+ * Revision 1.2  2000/07/09 14:16:30  eabalea
+ * Mise à jour, ajout de prestataires décodés
+ *
+ * Revision 1.1.1.1  2000/07/09 10:48:15  eabalea
+ * Programme permettant d'afficher le contenu d'une carte bancaire
+ * B0'
  *
  */
 
@@ -829,9 +833,9 @@ DROPTEXT				! Libère la date en cours
    se trouvant dans la puce */
 struct ValeurAuthentification
 {
-  int cle,
-      siglen;
-  unsigned char *VA;
+	int cle,
+		siglen;
+	unsigned char *VA;
 };
 typedef struct ValeurAuthentification ValeurAuthentification;
 
@@ -840,16 +844,16 @@ typedef struct ValeurAuthentification ValeurAuthentification;
    nécessaires à l'identification du compte */
 struct IdentitePorteur
 {
-  int  CodeEnreg;
-  char NumCarte[19];
-  int  CodeUsage;
-  int  DateDebutValidite[2];
-  int  CodeLangue;
-  int  DateFinValidite[2];
-  int  CodeDevise,
-       Exposant,
-       BinReference;
-  char NomPorteur[52];
+	int  CodeEnreg;
+	char NumCarte[19];
+	int  CodeUsage;
+	int  DateDebutValidite[2];
+	int  CodeLangue;
+	int  DateFinValidite[2];
+	int  CodeDevise,
+		 Exposant,
+		 BinReference;
+	char NomPorteur[52];
 };
 typedef struct IdentitePorteur IdentitePorteur;
 
@@ -857,9 +861,9 @@ typedef struct IdentitePorteur IdentitePorteur;
 /* On définit un type de plafond */
 struct TypePlafond
 {
-  int Type,
-      Periode,
-      Montant;
+	int Type,
+		Periode,
+		Montant;
 };
 typedef struct TypePlafond TypePlafond;
 
@@ -867,8 +871,8 @@ typedef struct TypePlafond TypePlafond;
 /* Le prestataire 04 (plafonds) est un ensemble de plafonds */
 struct DonneesPlafond
 {
-  int num;
-  TypePlafond *Plafond;
+	int num;
+	TypePlafond *Plafond;
 };
 typedef struct DonneesPlafond DonneesPlafond;
 
@@ -876,8 +880,9 @@ typedef struct DonneesPlafond DonneesPlafond;
 /* Le prestataire 00 (Bloc certificateur) */
 struct BlocCertificateur
 {
-  unsigned char ZoneDeComptage[14];
-  int TypeDeComptage;
+	int longueurZoneDeComptage;
+	unsigned char *ZoneDeComptage;
+	int TypeDeComptage;
 };
 typedef struct BlocCertificateur BlocCertificateur;
 
@@ -885,9 +890,9 @@ typedef struct BlocCertificateur BlocCertificateur;
 /* Le prestataire 17 (Informations Personnalisateur) */
 struct InformationsPersonnalisateur
 {
-  int DateDePerso,
-      NumSite,
-      NumPerso;
+	int DateDePerso,
+		NumSite,
+		NumPerso;
 };
 typedef struct InformationsPersonnalisateur InformationsPersonnalisateur;
 
@@ -895,9 +900,9 @@ typedef struct InformationsPersonnalisateur InformationsPersonnalisateur;
 /* Le prestataire 08 (Relevé d'Identité Bancaire) */
 struct ReleveIdentiteBancaire
 {
-  char CodeBanque[5],
-       CodeAgence[5],
-       NumeroDeCompte[11];
+	char CodeBanque[5],
+		CodeAgence[5],
+		NumeroDeCompte[11];
 };
 typedef struct ReleveIdentiteBancaire ReleveIdentiteBancaire;
 
@@ -905,9 +910,9 @@ typedef struct ReleveIdentiteBancaire ReleveIdentiteBancaire;
 /* Le prestataire 19 (Identité Certifiée C-SET) */
 struct IdentiteCertifieeCSET
 {
-  int Cle,
-      len;
-  unsigned char *buf;
+	int cle,
+		siglen;
+	unsigned char *CSET;
 };
 typedef struct IdentiteCertifieeCSET IdentiteCertifieeCSET;
 
@@ -915,8 +920,8 @@ typedef struct IdentiteCertifieeCSET IdentiteCertifieeCSET;
 /* Un prestataire inconnu */
 struct PrestataireInconnu
 {
-  int len;
-  unsigned char *buf;
+	int len;
+	unsigned char *buf;
 };
 typedef struct PrestataireInconnu PrestataireInconnu;
 
@@ -932,6 +937,8 @@ typedef struct PrestataireInconnu PrestataireInconnu;
 		07 Pointage
 		08 RIB
 		09 Date provisoire de validité
+		17
+		19
 		20 Adresse entreprise
 		21 Identification commerçant
 		22 Contrôle de flux (ou nouvelle Valeur d'authentification?)
@@ -943,18 +950,18 @@ typedef struct PrestataireInconnu PrestataireInconnu;
 /* Les différentes zones prestataires sont décrites comme ça: */
 struct Prestataire
 {
-  int typeinfo,
-      numprestataire,
-      len;
-  ValeurAuthentification *VA;
-  IdentitePorteur *Identite;
-  DonneesPlafond *Plafond;
-  BlocCertificateur *BC;
-  InformationsPersonnalisateur *IP;
-  ReleveIdentiteBancaire *RIB;
-  IdentiteCertifieeCSET *CSET;
-  PrestataireInconnu *Unknown;
-  struct Prestataire *Next;
+	int typeinfo,
+		numprestataire,
+		len;
+	ValeurAuthentification *VA;
+	IdentitePorteur *Identite;
+	DonneesPlafond *Plafond;
+	BlocCertificateur *BC;
+	InformationsPersonnalisateur *IP;
+	ReleveIdentiteBancaire *RIB;
+	IdentiteCertifieeCSET *CSET;
+	PrestataireInconnu *Unknown;
+	struct Prestataire *Next;
 };
 typedef struct Prestataire Prestataire;
 
@@ -963,8 +970,8 @@ typedef struct Prestataire Prestataire;
    présentation réussie ou non du code porteur */
 struct ZoneEtat
 {
-  int len;
-  unsigned char *buf;
+	int len;
+	unsigned char *buf;
 };
 typedef struct ZoneEtat ZoneEtat;
 
@@ -972,8 +979,9 @@ typedef struct ZoneEtat ZoneEtat;
 /* La zone confidentielle ne contient en général pas grand chose */
 struct ZoneConfidentielle
 {
-  int len;
-  unsigned char *buf;
+	int len;
+	unsigned char *buf;
+	Prestataire *PremierPrestataire;
 };
 typedef struct ZoneConfidentielle ZoneConfidentielle;
 
@@ -986,9 +994,9 @@ typedef struct ZoneConfidentielle ZoneConfidentielle;
 */
 struct ZoneTransaction
 {
-  int len;
-  unsigned char *buf;
-  Prestataire *PremierPrestataire;
+	int len;
+	unsigned char *buf;
+	Prestataire *PremierPrestataire;
 };
 typedef struct ZoneTransaction ZoneTransaction;
 
@@ -997,9 +1005,9 @@ typedef struct ZoneTransaction ZoneTransaction;
    et la Valeur d'Authentification */
 struct ZoneLecture
 {
-  int len;
-  unsigned char *buf;
-  Prestataire *PremierPrestataire;
+	int len;
+	unsigned char *buf;
+	Prestataire *PremierPrestataire;
 };
 typedef struct ZoneLecture ZoneLecture;
 
@@ -1008,26 +1016,26 @@ typedef struct ZoneLecture ZoneLecture;
    permettent de retrouver les autres zones */
 struct ZoneFabrication
 {
-  int len;
-  unsigned char *buf;
-  int ADB,
-      Texas,
-      ADP,
-      Options,
-      ADL,
-      ADT,
-      ADC,
-      ADM,
-      AD2,
-      ADS,
-      Application,
-      ProtectionZT,
-      AD1,
-      NumFabricant,
-      NumSerie,
-      NumLot,
-      Indice,
-      Verrous;
+	int len;
+	unsigned char *buf;
+	int ADB,
+		Texas,
+		ADP,
+		Options,
+		ADL,
+		ADT,
+		ADC,
+		ADM,
+		AD2,
+		ADS,
+		Application,
+		ProtectionZT,
+		AD1,
+		NumFabricant,
+		NumSerie,
+		NumLot,
+		Indice,
+		Verrous;
 };
 typedef struct ZoneFabrication ZoneFabrication;
 
@@ -1204,6 +1212,42 @@ void DecodeValeurAuthentification(unsigned char *buf, int len,
 
 
 /****************************************************************************
+ * void DecodeIdentiteCertifieeCSET(unsigned char *buf, int len,            *
+ *                                  Prestataire *P)                         *
+ *                                                                          *
+ * Fonction : Décode un bloc prestataire 19 (Identité Certifiée C-SET)      *
+ ****************************************************************************/
+void DecodeIdentiteCertifieeCSET(unsigned char *buf, int len,
+								 Prestataire *P)
+{
+	int offset=0,
+		i,
+		quartet;
+	
+	P->CSET=(IdentiteCertifieeCSET*)malloc(sizeof(IdentiteCertifieeCSET));
+	P->CSET->cle=buf[3]>>5;
+	P->CSET->siglen=((len/4)*7-4)*4;
+	P->CSET->CSET=(unsigned char *)malloc(P->CSET->siglen/8);
+	memset(P->CSET->CSET, 0, P->CSET->siglen/8);
+	for(i=5+8; i < (len*2)+8; i++)
+	{
+		if (i%8)
+		{
+			if (i%2)
+				quartet=buf[i/2]&0x0f;
+			else
+				quartet=buf[i/2]>>4;
+			if (offset%2)
+				P->CSET->CSET[offset/2]+=quartet;
+			else
+				P->CSET->CSET[offset/2]+=quartet<<4;
+			offset++;
+		}
+	}
+}
+
+
+/****************************************************************************
  * void DecodeBlocCertificateur(unsigned char *buf, int len,                *
  *                              Prestataire *P)                             *
  *                                                                          *
@@ -1216,9 +1260,11 @@ void DecodeBlocCertificateur(unsigned char *buf, int len, Prestataire *P)
 		quartet;
 	
 	P->BC=(BlocCertificateur*)malloc(sizeof(BlocCertificateur));
-	memset(P->BC->ZoneDeComptage, 0, sizeof(P->BC->ZoneDeComptage));
+	P->BC->longueurZoneDeComptage=((len-4-4)/4)*7;
+	P->BC->ZoneDeComptage=(unsigned char*)malloc(P->BC->longueurZoneDeComptage);
+	memset(P->BC->ZoneDeComptage, 0, P->BC->longueurZoneDeComptage);
 	
-	for(i=9; i < 31; i++)
+	for(i=9; i < 1+9+P->BC->longueurZoneDeComptage*2; i++)
 	{
 		if (i%8)
 		{
@@ -1233,8 +1279,29 @@ void DecodeBlocCertificateur(unsigned char *buf, int len, Prestataire *P)
 			offset++;
 		}
 	}
-	memmove(&(P->BC->TypeDeComptage), buf+20, 4);
-}
+	P->BC->TypeDeComptage=(buf[len]<<24)+(buf[len+1]<<16)+(buf[len+2]<<8)+buf[len+3];
+}	
+
+
+/****************************************************************************
+ * void DecodePlafonds(unsigned char *buf, int len, Prestataire *P)         *
+ *                                                                          *
+ * Fonction : Décode un bloc prestataire 04 (Plafonds)                      *
+ ****************************************************************************/
+void DecodePlafonds(unsigned char *buf, int len, Prestataire *P)
+{
+	int i;
+
+	P->Plafond=(DonneesPlafond*)malloc(sizeof(DonneesPlafond));
+	P->Plafond->num=len/4;
+	P->Plafond->Plafond=(TypePlafond*)malloc(P->Plafond->num*sizeof(TypePlafond));
+	for(i=0; i < P->Plafond->num; i++)
+	{
+		P->Plafond->Plafond[i].Type=(buf[4+i*4]&0x0f)>>1;
+		P->Plafond->Plafond[i].Periode=buf[4+i*4+1]>>4;
+		P->Plafond->Plafond[i].Montant=((buf[4+i*4+1]&0x0f)<<16)+(buf[4+i*4+2]<<8)+buf[4+i*4+3];
+	}
+}	
 
 
 /****************************************************************************
@@ -1274,6 +1341,9 @@ void CherchePrestataires(unsigned char *buf, int len, Prestataire **P)
 		case 00: DecodeBlocCertificateur(buf+ptr, (*P)->len, *P); break;
 		case 02: DecodeIdentitePorteur(buf+ptr, (*P)->len, *P); break;
 		case 03: DecodeValeurAuthentification(buf+ptr, (*P)->len, *P); break;
+		case 04: DecodePlafonds(buf+ptr, (*P)->len, *P); break;
+		case 19: DecodeIdentiteCertifieeCSET(buf+ptr, (*P)->len, *P); break;
+		case 22: DecodeValeurAuthentification(buf+ptr, (*P)->len, *P); break;
 		default: DecodePrestataireInconnu(buf+ptr, (*P)->len, *P); break;
 		}
 		
@@ -1400,6 +1470,10 @@ void LitPuce(void)
 		
 		if (ReadB0Memory(start, len, ZC.buf))
 			return;
+
+		/* Il faut maintenant parser le machin, pour détecter les différents
+		blocs prestataires */
+		CherchePrestataires(ZC.buf, ZC.len, &(ZC.PremierPrestataire));
 	}
 	
 	/* Si l'utilisateur a présenté le code PIN, on peut donc lire la Zone
@@ -1425,7 +1499,7 @@ void LitPuce(void)
 		if (ReadB0Memory(start, len, ZT.buf))
 			return;
 		
-			/* Il faut maintenant parser le machin, pour détecter les différents
+		/* Il faut maintenant parser le machin, pour détecter les différents
 		blocs prestataires */
 		CherchePrestataires(ZT.buf, ZT.len, &(ZT.PremierPrestataire));
 	}
@@ -1500,9 +1574,35 @@ void DumpData(unsigned char *buf, int len, char *prefix)
  ****************************************************************************/
 void AffichePrestataireInconnu(PrestataireInconnu *x)
 {
-	printf("\n\tBloc prestataire inconnu\n");
-	printf("\t------------------------\n");
-	DumpData(x->buf, x->len, "\t");
+	printf("\n    Bloc prestataire inconnu\n");
+	printf("    ------------------------\n");
+	DumpData(x->buf, x->len, "    ");
+	printf("    Numéro de prestataire: %d ", x->buf[1]);
+	switch (x->buf[1])
+	{
+		case 0:  printf("(Certificateur)\n"); break;
+		case 1:  printf("(Clé de transaction)\n"); break;
+		case 2:  printf("(Identité porteur)\n"); break;
+		case 3:  printf("(Valeur d'authentification)\n"); break;
+		case 4:  printf("(Plafond)\n"); break;
+		case 5:  printf("(1ère adresse)\n"); break;
+		case 6:  printf("(2ème adresse)\n"); break;
+		case 7:  printf("(Pointage)\n"); break;
+		case 8:  printf("(RIB)\n"); break;
+		case 9:  printf("(Date provisoire de validité)\n"); break;
+		case 17: printf("(Personnalisateur)\n"); break;
+		case 19: printf("(Identité certifiée C-SET)\n"); break;
+		case 20: printf("(Adresse entreprise)\n"); break;
+		case 21: printf("(Identification commerçant)\n"); break;
+		case 22: printf("(Contrôle de flux (ou nouvelle Valeur d'authentification?))\n"); break;
+		case 31: printf("(Clé banque)\n"); break;
+		case 32: printf("(Clé d'ouverture)\n"); break;
+		default: printf("(Inconnu)\n"); break;
+	}
+	printf("    Longueur du bloc prestataire: %d\n", x->buf[2]);
+	printf("    Bits système: %s, %s\n", (x->buf[0]&0x40)?"informations monétaires":"informations non monétaires",
+		   (x->buf[0]&0x20)?"informations bancaires":"informations prestataires");
+	printf("    Type: %s\n", (x->buf[0]&0x08)?"autres prestataires":"prestataire 04 (plafonds)");
 }
 
 
@@ -1516,14 +1616,14 @@ void AfficheIdentitePorteur(IdentitePorteur *x)
 {
 	int i;
 	
-	printf("\n\tBloc prestataire 02 (Identite Porteur)\n");
-	printf("\t--------------------------------------\n");
-	printf("\tCode enreg. = %02x\n", x->CodeEnreg);
-	printf("\tNumCarte = ");
+	printf("\n    Bloc prestataire 02 (Identite Porteur)\n");
+	printf("    --------------------------------------\n");
+	printf("    Code enreg. = %02x\n", x->CodeEnreg);
+	printf("    NumCarte = ");
 	for(i=0; i < 19; i++)
 		printf("%X", x->NumCarte[i]);
 	printf("\n");
-	printf("\tCode Usage = %03x (", x->CodeUsage);
+	printf("    Code Usage = %03x (", x->CodeUsage);
 	switch (x->CodeUsage/0x100)
 	{
     case 1 : printf("Internationale - "); break;
@@ -1568,15 +1668,15 @@ void AfficheIdentitePorteur(IdentitePorteur *x)
     case 0x45: printf("paiement/code/autorisation sauf procédure dégradée)\n"); break;
     default  : printf("code service inconnu)\n"); break;
 	}
-	printf("\tDate de début de validité = %02x/%02x\n",
+	printf("    Date de début de validité = %02x/%02x\n",
 		x->DateDebutValidite[1],
 		x->DateDebutValidite[0]);
-	printf("\tCode langue = %03x\n", x->CodeLangue);
-	printf("\tDate de fin de validité = %02x/%02x\n",
+	printf("    Code langue = %03x\n", x->CodeLangue);
+	printf("    Date de fin de validité = %02x/%02x\n",
 		x->DateFinValidite[1],
 		x->DateFinValidite[0]);
-	printf("\tCode devise = %03x\n", x->CodeDevise);
-	printf("\tExposant = %01x ", x->Exposant);
+	printf("    Code devise = %03x\n", x->CodeDevise);
+	printf("    Exposant = %01x ", x->Exposant);
 	switch (x->Exposant)
 	{
     case 1:  printf("(centimes/100)\n"); break;
@@ -1587,8 +1687,8 @@ void AfficheIdentitePorteur(IdentitePorteur *x)
     case 6:  printf("(francs*10)\n"); break;
     default: printf("(inconnu)\n"); break;
 	}
-	printf("\tBIN de référence = %06X\n", x->BinReference);
-	printf("\tNom du porteur = ");
+	printf("    BIN de référence = %06X\n", x->BinReference);
+	printf("    Nom du porteur = ");
 	for(i=0; i < 52; i+=2)
 		printf("%c", (x->NomPorteur[i]<<4)+x->NomPorteur[i+1]);
 	printf("\n");
@@ -1608,9 +1708,9 @@ void AfficheValeurAuthentification(ValeurAuthentification *x)
 2:2^320+0xd3ab7e06bc577b64101f69b96078a83f6703f49456a1025f65e9000b791f
 */
 
-	printf("\n\tBloc prestataire 03 (Valeur d'Authentification)\n");
-	printf("\t-------------------------------------------------\n");
-	printf("\tClé = %d ", x->cle);
+	printf("\n    Bloc prestataire 03 (Valeur d'Authentification)\n");
+	printf("    -----------------------------------------------\n");
+	printf("    Clé = %d ", x->cle);
 	switch (x->cle)
 	{
 	case 0:  printf("(clé de test)\n"); break;
@@ -1619,9 +1719,121 @@ void AfficheValeurAuthentification(ValeurAuthentification *x)
 	default: printf("(inconnue)\n"); break;
 	}
 	
-	printf("\tTaille de la signature = %d\n", x->siglen);
-	printf("\tSignature:\n");
-	DumpData(x->VA, x->siglen/8, "\t\t");
+	printf("    Taille de la signature = %d bits\n", x->siglen);
+	printf("    Signature:\n");
+	DumpData(x->VA, x->siglen/8, "        ");
+}
+
+
+/****************************************************************************
+ * void AfficheNouvelleValeurAuthentification(ValeurAuthentification *x)    *
+ *                                                                          *
+ * Fonction : Affiche un bloc VA: numéro de clé, signature RSA              *
+ *            Normalement, ce prestataire est appelé Contrôle de flux, et   *
+ *            est défini depuis le 1er mai 1997 au moins                    *
+ ****************************************************************************/
+void AfficheNouvelleValeurAuthentification(ValeurAuthentification *x)
+{
+	printf("\n    Bloc prestataire 22 (Contrôle de flux)\n");
+	printf("    --------------------------------------\n");
+	printf("    Ce bloc ressemble fortement à une Valeur d'Authentification, je vais donc\n");
+	printf("    l'afficher comme tel.\n");
+	printf("    Clé = %d\n", x->cle);
+	printf("    Taille de la signature = %d bits\n", x->siglen);
+	printf("    Signature:\n");
+	DumpData(x->VA, x->siglen/8, "        ");
+}
+
+
+/****************************************************************************
+ * void AfficheIdentiteCertifieeCSET(IdentiteCertifieeCSET *x)              *
+ *                                                                          *
+ * Fonction : Affiche un bloc IdentiteCertifieeCSET: numéro de clé,         *
+ *            signature RSA                                                 *
+ ****************************************************************************/
+void AfficheIdentiteCertifieeCSET(IdentiteCertifieeCSET *x)
+{
+	printf("\n    Bloc prestataire 19 (Identite Certifiée C-SET)\n");
+	printf("    ----------------------------------------------\n");
+	printf("    Clé = %d ", x->cle);
+	switch (x->cle)
+	{
+	case 0:  printf("(clé de test)\n"); break;
+	case 1:
+	case 2:
+	case 3:
+	case 4:
+	case 5:
+	case 6:
+	case 7:  printf("(clé réelle n° %d)\n"); break;
+	default: printf("(inconnue)\n"); break;
+	}
+	
+	printf("    Taille de la signature = %d bits\n", x->siglen);
+	printf("    Signature:\n");
+	DumpData(x->CSET, x->siglen/8, "        ");
+}
+
+
+/****************************************************************************
+ * void AffichePlafonds(DonneesPlafond *x)                                  *
+ *                                                                          *
+ * Fonction : Affiche un bloc plafonds                                      *
+ ****************************************************************************/
+void AffichePlafonds(DonneesPlafond *x)
+{
+	int i;
+	double exposant;
+	Prestataire *P;
+
+	printf("\n    Bloc prestataire 04 (Plafonds)\n");
+	printf("    ------------------------------\n");
+
+	P=ZL.PremierPrestataire;
+	while (P && P->numprestataire != 02)
+		P=P->Next;
+	if (!P)
+		printf("    Exposant monétaire inconnu\n");
+	else
+		switch (P->Identite->Exposant)
+		{
+		case 1:  exposant=0.0001; break;
+		case 2:  exposant=0.001; break;
+		case 3:  exposant=0.01; break;
+		case 4:  exposant=0.1; break;
+		case 5:  exposant=1; break;
+		case 6:  exposant=10; break;
+		default: exposant=1; printf("    Exposant monétaire inconnu\n"); break;
+		}
+
+	for(i=0; i < x->num; i++)
+	{
+		switch (x->Plafond[i].Type)
+		{
+		case 1:  printf("    Achats au comptant, "); break;
+		case 2:  printf("    Achats à crédit, "); break;
+		case 3:  printf("    Retraits, "); break;
+		case 4:  printf("    Virements, "); break;
+		default: printf("    Type de plafond inconnu, "); break;
+		}
+		switch(x->Plafond[i].Periode)
+		{
+		case 0:  printf("sans périodicité, "); break;
+		case 1:  printf("journalier, "); break;
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+		case 6:  printf("tous les %d jours, ", x->Plafond[i].Periode); break;
+		case 7:  printf("hebdomadaire, "); break;
+		case 8:
+		case 9:
+		case 10: printf("tous les %d jours, ", x->Plafond[i].Periode); break;
+		case 15: printf("mensuel, "); break;
+		default: printf("périodicité inconnue, "); break;
+		}
+		printf("%10.2f\n", (double)(x->Plafond[i].Montant)*exposant);
+	}
 }
 
 
@@ -1632,11 +1844,11 @@ void AfficheValeurAuthentification(ValeurAuthentification *x)
  ****************************************************************************/
 void AfficheBlocCertificateur(BlocCertificateur *x)
 {
-	printf("\n\tBloc prestataire 00 (Bloc Certificateur)\n");
-	printf("\t------------------------------------------\n");
-	printf("\tZone de comptage:\n");
-	DumpData(x->ZoneDeComptage, sizeof(x->ZoneDeComptage), "\t\t");
-	printf("\tMot fixe: %08X ", x->TypeDeComptage);
+	printf("\n    Bloc prestataire 00 (Bloc Certificateur)\n");
+	printf("    ----------------------------------------\n");
+	printf("    Zone de comptage:\n");
+	DumpData(x->ZoneDeComptage, x->longueurZoneDeComptage, "        ");
+	printf("    Mot fixe: %08X ", x->TypeDeComptage);
 	switch(x->TypeDeComptage)
 	{
 	case 0x70ff8fff: printf("(comptage global)\n"); break;
@@ -1660,6 +1872,9 @@ void AffichePrestataires(Prestataire *P)
 		case 00: AfficheBlocCertificateur(P->BC); break;
 		case 02: AfficheIdentitePorteur(P->Identite); break;
 		case 03: AfficheValeurAuthentification(P->VA); break;
+		case 04: AffichePlafonds(P->Plafond); break;
+		case 19: AfficheIdentiteCertifieeCSET(P->CSET); break;
+		case 22: AfficheNouvelleValeurAuthentification(P->VA); break;
 		default: AffichePrestataireInconnu(P->Unknown); break;
 		}
 		P=P->Next;
@@ -1690,45 +1905,45 @@ void AffichePuce(void)
 	
 	printf("Options       = 0x%03x\n", ZF.Options);
 	if (ZF.Options & 0x0400)
-		printf("\tEcriture ZC libre\n");
+		printf("    Ecriture ZC libre\n");
 	else
-		printf("\tEcriture ZC protégée\n");
+		printf("    Ecriture ZC protégée\n");
 	if (ZF.Options & 0x0200)
-		printf("\tLecture ZC libre\n");
+		printf("    Lecture ZC libre\n");
 	else
-		printf("\tLecture ZC protégée\n");
+		printf("    Lecture ZC protégée\n");
 	if (ZF.Options & 0x0008)
-		printf("\tZC non effaçable\n");
+		printf("    ZC non effaçable\n");
 	else
 	{
-		printf("\tZC effaçable\n");
+		printf("    ZC effaçable\n");
 		switch ((ZF.Options & 0x0180)>>12)
 		{
-		case 0: printf("\tEffacement ZC sous clé banque CB\n"); break;
-		case 1: printf("\tEffacement ZC sous clé d'ouverture CO\n"); break;
-		case 2: printf("\tEffacement ZC sous code confidentiel\n"); break;
-		case 3: printf("\tEffacement ZC libre\n"); break;
+		case 0: printf("    Effacement ZC sous clé banque CB\n"); break;
+		case 1: printf("    Effacement ZC sous clé d'ouverture CO\n"); break;
+		case 2: printf("    Effacement ZC sous code confidentiel\n"); break;
+		case 3: printf("    Effacement ZC libre\n"); break;
 		}
 	}
 	if (ZF.Options & 0x0040)
-		printf("\tPas de recyclage ZT automatique\n");
+		printf("    Pas de recyclage ZT automatique\n");
 	else
-		printf("\tRecyclage ZT automatique (avec faux plafond égal à 0)\n");
+		printf("    Recyclage ZT automatique (avec faux plafond égal à 0)\n");
 	if (ZF.Options & 0x0010)
-		printf("\tEffacement ZE non autorisé\n");
+		printf("    Effacement ZE non autorisé\n");
 	else
-		printf("\tEffacement ZE automatique, géré par le masque B4-B0'\n");
+		printf("    Effacement ZE automatique, géré par le masque B4-B0'\n");
 	if (ZF.Options & 0x0004)
-		printf("\tZT non effaçable\n");
+		printf("    ZT non effaçable\n");
 	else
 	{
-		printf("\tZT effaçable\n");
+		printf("    ZT effaçable\n");
 		switch (ZF.Options & 0x0003)
 		{
-		case 0: printf("\tEffacement ZT sous clé banque CB\n"); break;
-		case 1: printf("\tEffacement ZT sous clé d'ouverture CO\n"); break;
-		case 2: printf("\tEffacement ZT sous code confidentiel\n"); break;
-		case 3: printf("\tEffacement ZT libre\n"); break;
+		case 0: printf("    Effacement ZT sous clé banque CB\n"); break;
+		case 1: printf("    Effacement ZT sous clé d'ouverture CO\n"); break;
+		case 2: printf("    Effacement ZT sous code confidentiel\n"); break;
+		case 3: printf("    Effacement ZT libre\n"); break;
 		}
 	}
 	
@@ -1801,6 +2016,7 @@ void AffichePuce(void)
 	printf("\n¦ Contenu de la Zone Confidentielle ¦\n");
 	printf("=====================================\n");
 	DumpData(ZC.buf, ZC.len, "");
+	AffichePrestataires(ZC.PremierPrestataire);
 	
 	
 	/************************
