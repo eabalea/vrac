@@ -1,7 +1,11 @@
-static char rcsid[]="$Id: rndsig.c,v 1.1 2000/12/13 16:44:27 eabalea Exp $";
+static char rcsid[]="$Id: rndsig.c,v 1.2 2000/12/13 17:03:33 eabalea Exp $";
 
 /*
  * $Log: rndsig.c,v $
+ * Revision 1.2  2000/12/13 17:03:33  eabalea
+ * Added a SIGHUP signal handler. It only frees the quotes, and re-read them
+ * from the quotes file
+ *
  * Revision 1.1  2000/12/13 16:44:27  eabalea
  * Initial revision
  *
@@ -16,6 +20,7 @@ static char rcsid[]="$Id: rndsig.c,v 1.1 2000/12/13 16:44:27 eabalea Exp $";
 #include <stdlib.h>
 #include <time.h>
 #include <pwd.h>
+#include <signal.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -28,6 +33,7 @@ static char rcsid[]="$Id: rndsig.c,v 1.1 2000/12/13 16:44:27 eabalea Exp $";
 unsigned char rcfile[MAXNAMLEN+1] = "~/.rndsigrc";
 unsigned char output[MAXNAMLEN+1] = "~/.signature";
 unsigned char template[MAXNAMLEN+1] = "";
+unsigned char quotesfile[MAXNAMLEN+1] = "";
 unsigned char **sigs;
 unsigned char fixedsig[1024];
 unsigned long int nbsigs = 0;
@@ -44,13 +50,40 @@ enum {
  * void SIGHUPhandler(int signum)
  *
  * SIGHUP signal handler
- * This one will free all the tables, close and delete the named pipe, 
- * reread the rc file, and create all the necessary stuff in memory 
- * (signatures table, tamplate, ...).
  ******/
 void SIGHUPhandler(int signum)
 {
-  /* ToDo: */
+  int i;
+  char buf[1024];
+  FILE *f;
+
+  for(i=0; i < nbsigs; i++)
+    free(sigs[i]);
+  free(sigs);
+  nbsigs=0;
+
+  /* We re-read all the quotes in the specified file */
+  if (!(f=fopen(quotesfile, "r")))
+  {
+    fprintf(stderr, "Unable to open %s for reading.\n", quotesfile);
+    exit(-1);
+  }
+  
+  while(fgets(buf, sizeof(buf)-1, f))
+  {
+    if (nbsigs)
+      sigs=(unsigned char **)realloc(sigs, (nbsigs+1)*sizeof(unsigned char **));
+    else
+      sigs=(unsigned char **)malloc((nbsigs+1)*sizeof(unsigned char **));
+    sigs[nbsigs++]=strdup(buf);
+  }
+  fclose(f);
+
+  /* ToDo:
+     - close and delete the output file
+     - re-read the resource file
+     - reopen the output file
+  */
 }
 
 
@@ -202,7 +235,6 @@ void readrcfile(void)
 {
   FILE *f;
   unsigned char buf[1024];
-  unsigned char quotesfile[MAXNAMLEN+1] = "";
   
   /* We start by expanding the rcfilename */
   expandfilename(rcfile);
@@ -286,7 +318,7 @@ void readrcfile(void)
   }
   if (!(f=fopen(quotesfile, "r")))
   {
-    printf("Unable to open %s for reading.\n", quotesfile);
+    fprintf(stderr, "Unable to open %s for reading.\n", quotesfile);
     exit(-1);
   }
   while(fgets(buf, sizeof(buf)-1, f))
@@ -302,7 +334,7 @@ void readrcfile(void)
   /* Next thing to do is to get the template */
   if (!(f=fopen(template, "r")))
   {
-    printf("Unable to read the template (%s).\n", template);
+    fprintf(stderr, "Unable to read the template (%s).\n", template);
     exit(-1);
   }
   memset(fixedsig, 0, sizeof(fixedsig));
@@ -331,16 +363,36 @@ void init(void)
 int main(int argc, char **argv)
 {
   FILE *f;
+  int cursig=0;
   
   init();
   
-  if (!fork())
+  signal(SIGHUP, SIGHUPhandler);
+  
+/*  if (!fork()) */
   {
     while (1)
     {
       f=fopen(output, "w");
+      if (insertdashes)
+        fprintf(f, "-- \n");
       fprintf(f, "%s", fixedsig);
-      fprintf(f, "%s", sigs[rand()%nbsigs]);
+      switch (order)
+      {
+        case oRegular: fprintf(f, "%s", sigs[cursig]);
+                       cursig++;
+                       if (cursig == nbsigs)
+                         cursig=0;
+                       break;
+        case oReverse: cursig--;
+                       if (cursig == -1)
+                         cursig=nbsigs-1;
+                       fprintf(f, "%s", sigs[cursig]);
+                       break;
+        case oRandom : fprintf(f, "%s", sigs[rand()%nbsigs]);
+                       break;
+        default      : break;
+      }
       fclose(f);
       sleep(1);
     }
