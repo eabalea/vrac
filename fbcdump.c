@@ -1,7 +1,13 @@
-static char rcsid[]="$Id: fbcdump.c,v 1.2 2000/07/09 14:16:30 eabalea Exp $";
+static char rcsid[]="$Id: fbcdump.c,v 1.3 2001/06/26 06:04:51 eabalea Exp $";
 
 /*
  * $Log: fbcdump.c,v $
+ * Revision 1.3  2001/06/26 06:04:51  eabalea
+ * Meilleure gestion des erreurs
+ * Choix du lecteur PC/SC à utiliser
+ * La VA subit un début de vérification (le chiffrement RSA
+ * est effectué, un dump suit)
+ *
  * Revision 1.2  2000/07/09 14:16:30  eabalea
  * Mise à jour, ajout de prestataires décodés
  *
@@ -12,14 +18,34 @@ static char rcsid[]="$Id: fbcdump.c,v 1.2 2000/07/09 14:16:30 eabalea Exp $";
  */
 
 #include <stdio.h>
-#include <windows.h>
 #include <winscard.h>
 #include <stdlib.h>
 #include <string.h>
+#include <openssl/bn.h>
 
+#ifndef MAX_ATR_SIZE
+#define MAX_ATR_SIZE 32
+#endif
 
 /* Todo: intégrer les infos du programme ci-dessous:
  ***************************************************
+
+  Appels à PEEK:
+    bit de début de zone
+	zone
+	longueur à lire, en bits
+
+! Les zones affectées sont les suivantes
+! 	0 - Reponse au reset (initialisé par INIT.FOR)
+!	1 - Zone secrète
+!	2 - Zone d'accès
+!	3 - Zone confidentielle
+!	4 - Zone de transaction
+!	5 - Zone de lecture
+!	6 - Zone de fabrication
+!	7 - Zone des locks
+!   8 - VA une fois déchiffrée
+
 "Réponse au RESET :"
 "=================="
 ""
@@ -1067,6 +1093,53 @@ ZoneLecture ZL;
 ZoneFabrication ZF;
 
 
+char *SCardError(unsigned long int rv)
+{
+	static char errormsg[1024];
+
+	switch (rv)
+	{
+	case SCARD_E_CANCELLED           : sprintf(errormsg, "SCARD_E_CANCELLED"); break;
+	case SCARD_E_CANT_DISPOSE        : sprintf(errormsg, "SCARD_E_CANT_DISPOSE"); break;
+	case SCARD_E_CARD_UNSUPPORTED    : sprintf(errormsg, "SCARD_E_CARD_UNSUPPORTED"); break;
+	case SCARD_E_DUPLICATE_READER    : sprintf(errormsg, "SCARD_E_DUPLICATE_READER"); break;
+	case SCARD_E_INSUFFICIENT_BUFFER : sprintf(errormsg, "SCARD_E_INSUFFICIENT_BUFFER"); break;
+	case SCARD_E_INVALID_ATR         : sprintf(errormsg, "SCARD_E_INVALID_ATR"); break;
+	case SCARD_E_INVALID_HANDLE      : sprintf(errormsg, "SCARD_E_INVALID_HANDLE"); break;
+	case SCARD_E_INVALID_PARAMETER   : sprintf(errormsg, "SCARD_E_INVALID_PARAMETER"); break;
+	case SCARD_E_INVALID_TARGET      : sprintf(errormsg, "SCARD_E_INVALID_TARGET"); break;
+	case SCARD_E_INVALID_VALUE       : sprintf(errormsg, "SCARD_E_INVALID_VALUE"); break;
+	case SCARD_E_NOT_READY           : sprintf(errormsg, "SCARD_E_NOT_READY"); break;
+	case SCARD_E_NOT_TRANSACTED      : sprintf(errormsg, "SCARD_E_NOT_TRANSACTED"); break;
+	case SCARD_E_NO_MEMORY           : sprintf(errormsg, "SCARD_E_NO_MEMORY"); break;
+	case SCARD_E_NO_SERVICE          : sprintf(errormsg, "SCARD_E_NO_SERVICE"); break;
+	case SCARD_E_NO_SMARTCARD        : sprintf(errormsg, "SCARD_E_NO_SMARTCARD"); break;
+	case SCARD_E_PCI_TOO_SMALL       : sprintf(errormsg, "SCARD_E_PCI_TOO_SMALL"); break;
+	case SCARD_E_PROTO_MISMATCH      : sprintf(errormsg, "SCARD_E_PROTO_MISMATCH"); break;
+	case SCARD_E_READER_UNAVAILABLE  : sprintf(errormsg, "SCARD_E_READER_UNAVAILABLE"); break;
+	case SCARD_E_READER_UNSUPPORTED  : sprintf(errormsg, "SCARD_E_READER_UNSUPPORTED"); break;
+	case SCARD_E_SERVICE_STOPPED     : sprintf(errormsg, "SCARD_E_SERVICE_STOPPED"); break;
+	case SCARD_E_SHARING_VIOLATION   : sprintf(errormsg, "SCARD_E_SHARING_VIOLATION"); break;
+	case SCARD_E_SYSTEM_CANCELLED    : sprintf(errormsg, "SCARD_E_SYSTEM_CANCELLED"); break;
+	case SCARD_E_TIMEOUT             : sprintf(errormsg, "SCARD_E_TIMEOUT"); break;
+	case SCARD_E_UNKNOWN_CARD        : sprintf(errormsg, "SCARD_E_UNKNOWN_CARD"); break;
+	case SCARD_E_UNKNOWN_READER      : sprintf(errormsg, "SCARD_E_UNKNOWN_READER"); break;
+	case SCARD_F_COMM_ERROR          : sprintf(errormsg, "SCARD_F_COMM_ERROR"); break;
+	case SCARD_F_INTERNAL_ERROR      : sprintf(errormsg, "SCARD_F_INTERNAL_ERROR"); break;
+	case SCARD_F_UNKNOWN_ERROR       : sprintf(errormsg, "SCARD_F_UNKNOWN_ERROR"); break;
+	case SCARD_F_WAITED_TOO_LONG     : sprintf(errormsg, "SCARD_F_WAITED_TOO_LONG"); break;
+	case SCARD_S_SUCCESS             : sprintf(errormsg, "SCARD_S_SUCCESS"); break;
+	case SCARD_W_REMOVED_CARD        : sprintf(errormsg, "SCARD_W_REMOVED_CARD"); break;
+	case SCARD_W_RESET_CARD          : sprintf(errormsg, "SCARD_W_RESET_CARD"); break;
+	case SCARD_W_UNPOWERED_CARD      : sprintf(errormsg, "SCARD_W_UNPOWERED_CARD"); break;
+	case SCARD_W_UNRESPONSIVE_CARD   : sprintf(errormsg, "SCARD_W_UNRESPONSIVE_CARD"); break;
+	case SCARD_W_UNSUPPORTED_CARD    : sprintf(errormsg, "SCARD_W_UNSUPPORTED_CARD"); break;
+	default                          : sprintf(errormsg, "Unknown error code (0x%08x)", rv); break;
+	}
+
+	return errormsg;
+}
+
 /****************************************************************************
  * void testPIN(void)                                                       *
  *                                                                          *
@@ -1076,6 +1149,7 @@ ZoneFabrication ZF;
 int testPIN(void)
 {
 	long hexpin;
+	unsigned long int rv;
 	
 	hexpin=strtol(PINCODE, NULL, 16);
 	hexpin<<=14;
@@ -1092,9 +1166,9 @@ int testPIN(void)
 	Command[7]=(hexpin>>8)&0xff;
 	Command[8]=hexpin&0xff;
 	ResponseLength=2;
-	if (SCardTransmit(handle, SCARD_PCI_T0, Command, 9, NULL, Response, &ResponseLength) != SCARD_S_SUCCESS)
+	if ((rv=SCardTransmit(handle, SCARD_PCI_T0, Command, 9, NULL, Response, &ResponseLength)) != SCARD_S_SUCCESS)
 	{
-		printf("Erreur lors de l'envoi du code PIN.\n");
+		printf("Erreur lors de l'envoi du code PIN (%s).\n", SCardError(rv));
 		return 0;
 	}
 	
@@ -1108,9 +1182,9 @@ int testPIN(void)
 	Command[3]=0x00;
 	Command[4]=0;
 	ResponseLength=2;
-	if (SCardTransmit(handle, SCARD_PCI_T0, Command, 4, NULL, Response, &ResponseLength) != SCARD_S_SUCCESS)
+	if ((rv=SCardTransmit(handle, SCARD_PCI_T0, Command, 4, NULL, Response, &ResponseLength)) != SCARD_S_SUCCESS)
 	{
-		printf("Erreur lors de la ratification du code PIN.\n");
+		printf("Erreur lors de la ratification du code PIN (%s).\n", SCardError(rv));
 		return 0;
 	}
 	
@@ -1362,6 +1436,7 @@ void CherchePrestataires(unsigned char *buf, int len, Prestataire **P)
 int ReadB0Memory(int start, int len, unsigned char *buf)
 {
 	int offset=0;
+	unsigned long int rv;
 	
 	while (len)
 	{
@@ -1371,9 +1446,9 @@ int ReadB0Memory(int start, int len, unsigned char *buf)
 		Command[3]=start&0xFF;
 		Command[4]=min(len, 0x80);
 		ResponseLength=min(len, 0x80)+2;
-		if (SCardTransmit(handle, SCARD_PCI_T0, Command, 5, NULL, Response, &ResponseLength) != SCARD_S_SUCCESS)
+		if ((rv=SCardTransmit(handle, SCARD_PCI_T0, Command, 5, NULL, Response, &ResponseLength)) != SCARD_S_SUCCESS)
 		{
-			printf("Erreur lors de l'envoi de la commande de lecture mémoire.\n");
+			printf("Erreur lors de l'envoi de la commande de lecture mémoire (%s).\n", SCardError(rv));
 			return 1;
 		}
 		memmove(buf+offset, Response, ResponseLength-2);
@@ -1394,6 +1469,7 @@ int ReadB0Memory(int start, int len, unsigned char *buf)
  ****************************************************************************/
 void LitPuce(void)
 {
+	/* ToDo: revoir les décallages de bits, notamment pour le numéro de fabricant */
 	fprintf(stderr, "Lecture de la Zone de Fabrication\n");
 	
 	/* On doit d'abord lire la Zone de Fabrication */
@@ -1570,7 +1646,7 @@ void DumpData(unsigned char *buf, int len, char *prefix)
  * void AffichePrestataireInconnu(PrestataireInconnu *x)                    *
  *                                                                          *
  * Fonction : Affiche le dump d'un bloc prestataire dont on ne connait pas  *
- * la signification (un prestataire inconnu quoi...)                        *
+ * la signification ou le codage (un prestataire inconnu quoi...)           *
  ****************************************************************************/
 void AffichePrestataireInconnu(PrestataireInconnu *x)
 {
@@ -1708,20 +1784,89 @@ void AfficheValeurAuthentification(ValeurAuthentification *x)
 2:2^320+0xd3ab7e06bc577b64101f69b96078a83f6703f49456a1025f65e9000b791f
 */
 
+	BIGNUM *e,
+           *m,
+           *r,
+           *s;
+	BN_CTX *ctx;
+	unsigned char *message;
+	unsigned char module[][41] = 
+	{
+		{ 
+		  0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xC1,0x84,0x07,0x50,0x5F,
+		  0x55,0xC2,0x46,0xAF,0x7A,0xB2,0x47,0xCB,0xE3,0x32,0xF0,0xEF,0xC2,0xD1,0xC9,0xB2,
+		  0xB6,0xBF,0xA6,0x97,0xE4,0xD5,0x76,0x68,0x91
+		},
+		{ 
+		  0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x90,0xB8,0xAA,0xA8,0xDE,
+          0x35,0x8E,0x77,0x82,0xE8,0x1C,0x77,0x23,0x65,0x3B,0xE6,0x44,0xF7,0xDC,0xC6,0xF8,
+          0x16,0xDA,0xF4,0x6E,0x53,0x2B,0x91,0xE8,0x4F
+		},
+		{ 
+		  0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xD3,0xAB,0x7E,0x06,0xBC,
+          0x57,0x7B,0x64,0x10,0x1F,0x69,0xB9,0x60,0x78,0xA8,0x3F,0x67,0x03,0xF4,0x94,0x56,
+          0xA1,0x02,0x5F,0x65,0xE9,0x00,0x0B,0x79,0x1F
+		}
+	}; 
+
+
 	printf("\n    Bloc prestataire 03 (Valeur d'Authentification)\n");
 	printf("    -----------------------------------------------\n");
 	printf("    Clé = %d ", x->cle);
 	switch (x->cle)
 	{
-	case 0:  printf("(clé de test)\n"); break;
-	case 1:  printf("(clé réelle n° 1)\n"); break;
-	case 2:  printf("(clé réelle n° 2)\n"); break;
+	case 0:
+		printf("(clé de test)\n");
+		break;
+	case 1:
+		printf("(clé réelle n° 1)\n"); 
+		break;
+	case 2:  
+		printf("(clé réelle n° 2)\n"); 
+		break;
 	default: printf("(inconnue)\n"); break;
 	}
 	
 	printf("    Taille de la signature = %d bits\n", x->siglen);
 	printf("    Signature:\n");
 	DumpData(x->VA, x->siglen/8, "        ");
+
+	if ((x->cle >= 0) && (x->cle <= 3))
+	{
+		ctx=BN_CTX_new();
+
+		/* L'exposant public, e=3 */
+		e=BN_new();
+		BN_zero(e);
+		BN_add_word(e, 3);
+
+		/* Le module de la clé */
+		m=BN_new();
+		BN_bin2bn(module[x->cle], 41, m);
+
+		/* La signature est la VA */
+		s=BN_new();
+		BN_bin2bn(x->VA, x->siglen/8, s);
+
+		/* On réalise l'exponentiation RSA */
+		r=BN_new();
+	    BN_mod_exp(r, s, e, m, ctx);
+
+		/* On affiche la donnée signée par cette clé */
+		printf("    Taille des données signées = %d bits\n", BN_num_bits(r));
+		printf("    Données signées:\n");
+		message=malloc(BN_num_bytes(r));
+		BN_bn2bin(r, message);
+		DumpData(message, BN_num_bytes(r), "        ");
+
+		/* On nettoie */
+		BN_clear_free(s);
+		BN_clear(m);
+		BN_CTX_free(ctx);
+		free(message);
+		BN_clear_free(r);
+		BN_clear_free(e);
+	}
 }
 
 
@@ -2037,35 +2182,6 @@ void AffichePuce(void)
 	printf("=================================\n");
 	DumpData(ZL.buf, ZL.len, "");
 	AffichePrestataires(ZL.PremierPrestataire);
-	
-#if 0
-	/* Maintenant, on a en Response le contenu de la zone de lecture */
-	/* On va l'afficher proprement */
-	ptr=0;
-	while (ptr < ApduResp.LengthOut)
-	{
-		switch ((Response[ptr] & 0x60) >> 5)
-		{
-		case 0: printf("Informations non monétaires, prestataires\n"); break;
-		case 1: printf("Informations non monétaires, bancaires\n"); break;
-		case 2: printf("Informations monétaires, prestataires\n"); break;
-		case 3: printf("Informations monétaires, bancaires\n"); break;
-		}
-		
-		if (Response[ptr] & 0x08)
-			printf("Autres prestataires\n");
-		else
-			printf("Prestataire 04 (plafonds)\n");
-		
-		printf("Code prestataire: 0x%02x\n", Response[ptr+1]);
-		printf("Longueur données: 0x%02x\n", Response[ptr+2]);
-		
-		decodebloc(Response[ptr+1], Response[ptr+2], &(Response[ptr]));
-		ptr+=4+Response[ptr+2];
-		if (ptr < ApduResp.LengthOut)
-			printf("\n");
-	}
-#endif
 }
 
 
@@ -2107,6 +2223,30 @@ void GetCmdLine(int argc, char **argv)
 
 
 /****************************************************************************
+ * int ChoisitLecteur(char **liste, int nblecteurs)                         *
+ *                                                                          *
+ * Fonction : Affiche les lecteurs présents sur le système, et demande à    *
+ * l'utilisateur d'en choisir un.                                           *
+ ****************************************************************************/
+int ChoisitLecteur(char **liste, int nblecteurs)
+{
+	int i;
+	char buf[1024];
+
+	for(i=0; i < nblecteurs; i++)
+		printf("%2d - %s\n", i, liste[i]);
+	i=-1;
+	while ((i < 0) || (i >= nblecteurs))
+	{
+		printf("Votre choix > ");
+		fgets(buf, sizeof(buf)-1, stdin);
+		sscanf(buf, "%d", &i);
+	}
+	return i;
+}
+
+
+/****************************************************************************
  * void main()                                                              *
  *                                                                          *
  * Fonction : Fonction principale                                           *
@@ -2116,11 +2256,14 @@ int main(int argc, char **argv)
 	unsigned long taille = 0,
 	              protocol = 0,
 	              cardstate = 0,
-	              AtrLen = 0,
-				  i;
-	unsigned char Atr[32] = "                ";
+	              AtrLen = MAX_ATR_SIZE,
+				  i,
+				  rv;
+	unsigned char Atr[MAX_ATR_SIZE];
 	char *liste = NULL;
-	SCARD_READERSTATE readerstate;
+	char **lecteurs = NULL;
+	int nblecteurs = 0;
+	int choixlecteur = 0;
 
 	/* On va lire la ligne de commande */
 	GetCmdLine(argc, argv);
@@ -2129,32 +2272,52 @@ int main(int argc, char **argv)
 	printf("FBCDump\n");
 	printf("Id: %s\n", rcsid);
 
-	/* On veut tracer les changements de tous les lecteurs */
-	memset(&readerstate, 0, sizeof(readerstate));
-	readerstate.szReader = "Gemplus GemCore Based Readers 0";
-
 	/* Première chose à faire, discuter avec le PC/SC Resource Manager */
-	if (SCardEstablishContext(SCARD_SCOPE_USER, NULL, NULL, &context) != SCARD_S_SUCCESS)
+	if ((rv=SCardEstablishContext(SCARD_SCOPE_USER, NULL, NULL, &context)) != SCARD_S_SUCCESS)
 	{
-		printf("Erreur lors de l'établissement d'un contexte avec le SmartCard Resource Manager.\n");
+		printf("Erreur lors de l'établissement d'un contexte avec le SmartCard Resource Manager (%s).\n", SCardError(rv));
 		exit(-1);
 	}
 
 	/* En cas d'appel à exit(), on veut laisser la machine quand même propre... */
 	atexit(CloseAll);
 
+	/* ToDo: rechercher la liste des lecteurs, laisser l'utilisateur en choisir un
+	   s'il y en a plusieurs */
+
 	/* On cherche ensuite la liste des lecteurs enregistrés */
-	if (SCardListReaders(context, NULL, NULL, &taille) != SCARD_S_SUCCESS)
-		printf("Erreur lors de la récupération de la liste des lecteurs de cartes.\n");
+	if ((rv=SCardListReaders(context, NULL, NULL, &taille)) != SCARD_S_SUCCESS)
+		printf("Erreur lors de la récupération de la liste des lecteurs de cartes (%s).\n", SCardError(rv));
 	else
 	{
 		liste=(char*)malloc(taille);
 		SCardListReaders(context, NULL, liste, &taille);
 	}
 
+	/* On construit un tableau contenant le nom de tous les lecteurs */
+	i=0;
+	while (i < taille-1)
+	{
+		nblecteurs++;
+		if (nblecteurs > 1)
+			lecteurs=realloc(lecteurs, sizeof(char*)*nblecteurs);
+		else
+			lecteurs=malloc(sizeof(char*)*nblecteurs);
+		if (!lecteurs)
+		{
+			fprintf(stderr, "Impossible de réallouer un bloc de %d octets de long\n", sizeof(char*)*nblecteurs);
+			exit(1);
+		}
+		lecteurs[nblecteurs-1]=strdup(liste+i);
+		i+=strlen(liste+i)+1;
+	}
+
+	/* On demande à l'utilisateur de choisir l'un d'entre eux */
+	choixlecteur=ChoisitLecteur(lecteurs, nblecteurs);
+
 	/* Et on cherche à se connecter au premier d'entre eux */
-	if (SCardConnect(context, liste, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0, &handle, &protocol) != SCARD_S_SUCCESS)
-		printf("Erreur lors de l'ouverture d'une connexion avec la carte.\n");
+	if ((rv=SCardConnect(context, lecteurs[choixlecteur], SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0, &handle, &protocol)) != SCARD_S_SUCCESS)
+		printf("Erreur lors de l'ouverture d'une connexion avec la carte (%s).\n", SCardError(rv));
 	else
 	{
 		/* On initialise les zones à blanc */
@@ -2164,40 +2327,45 @@ int main(int argc, char **argv)
 		memset(&ZL, 0, sizeof(ZL));
 		memset(&ZF, 0, sizeof(ZF));
 
+		printf("¦ Identification de la carte ¦\n");
+		printf("==============================\n");
 		/* Récupération de l'ATR, pour avoir une première info */
-		if (SCardStatus(handle, liste, &taille, &cardstate, &protocol, Atr, &AtrLen) != SCARD_S_SUCCESS)
-			printf("Erreur lors de l'appel à SCardStatus.\n");
-		
-		printf("ATR: ");
-		for(i=0; i < AtrLen; i++)
-			printf("%02x ", Atr[i]);
-		printf("\n");
-		printf("Composant (MCE=%02x): ", Atr[4]);
-		switch (Atr[4])
+		if ((rv=SCardStatus(handle, liste, &taille, &cardstate, &protocol, Atr, &AtrLen)) != SCARD_S_SUCCESS)
 		{
-		case 0x31: printf("Motorola SC24/D40R (B4-B0' v1)\n");
-			break;
-		case 0x32: printf("SGS Thomson ST16301B/SKB (B4-B0' v1)\n");
-			break;
-		case 0x33: printf("Motorola SC24/D31J-D44J-F24V (B4-B0' v2)\n");
-			break;
-		case 0x34: printf("SGS Thomson ST16301B (B4-B0' v2)\n");
-			break;
-		case 0x35: printf("Texas TMS373C012 (B4-B0' v2)\n");
-			ZF.Texas=1;
-			break;
-		case 0x36: printf("SGS Thomson ST16601B/SKG (B4-B0' v2)\n");
-			break;
-		default  : printf("Inconnu\n");
-			break;
+			fprintf(stderr, "Erreur lors de l'appel à SCardStatus (%s).\n", SCardError(rv));
+			printf("Impossible\n");
 		}
-		printf("Caractéristiques fonctionnelles (MCF=%02x): ", Atr[5]);
-		switch (Atr[5])
+		else
 		{
-		case 0x04: printf("Masque 4\n"); break;
-		default  : printf("Inconnu\n"); break;
+			printf("ATR:\n");
+			DumpData(Atr, AtrLen, "    ");
+			printf("\n");
+			printf("Composant (MCE=%02x): ", Atr[4]);
+			switch (Atr[4])
+			{
+			case 0x31: printf("Motorola SC24/D40R (B4-B0' v1)\n");
+				break;
+			case 0x32: printf("SGS Thomson ST16301B/SKB (B4-B0' v1)\n");
+				break;
+			case 0x33: printf("Motorola SC24/D31J-D44J-F24V (B4-B0' v2)\n");
+				break;
+			case 0x34: printf("SGS Thomson ST16301B (B4-B0' v2)\n");
+				break;
+			case 0x35: printf("Texas TMS373C012 (B4-B0' v2)\n");
+				ZF.Texas=1;
+				break;
+			case 0x36: printf("SGS Thomson ST16601B/SKG (B4-B0' v2)\n");
+				break;
+			default  : printf("Inconnu\n");
+				break;
+			}
+			printf("Caractéristiques fonctionnelles (MCF=%02x): ", Atr[5]);
+			switch (Atr[5])
+			{
+			case 0x04: printf("Masque 4\n"); break;
+			default  : printf("Inconnu\n"); break;
+			}
 		}
-
 		/* Présentation du PIN code demandée? OK, on teste... */
 		if (PINgiven)
 			PINgiven=testPIN();
