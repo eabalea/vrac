@@ -1,7 +1,11 @@
-static char rcsid[]="$Id: rndsig.c,v 1.6 2003/12/22 11:49:33 eabalea Exp $";
+static char rcsid[]="$Id: rndsig.c,v 1.7 2004/10/18 13:42:22 eabalea Exp $";
 
 /*
  * $Log: rndsig.c,v $
+ * Revision 1.7  2004/10/18 13:42:22  eabalea
+ * Passage en version 0.3.
+ * Le programme passe maintenant réellement en arrière-plan.
+ *
  * Revision 1.6  2003/12/22 11:49:33  eabalea
  * rndsig peut maintenant accepter des arguments, dont le chemin vers le
  * fichier de config.
@@ -44,6 +48,7 @@ static char rcsid[]="$Id: rndsig.c,v 1.6 2003/12/22 11:49:33 eabalea Exp $";
 #include <sys/types.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <fcntl.h>
 
 /**************
  * Global variables (bad)
@@ -557,6 +562,101 @@ void init(int argc, char **argv)
   readrcfile();
 }
 
+
+/******
+ * void beadaemon(void)
+ *
+ * Do what is necessary to become a daemon: detach from the terminal,
+ * leave session and group leadership, close std{in,out,err}, ...
+ ******/
+void beadaemon(void)
+{
+  pid_t son;
+  int result = 0;
+
+  /* Start by a fork(), the father must die, the son is no more
+   * process group leader.
+   */
+  son = fork();
+  switch (son)
+  {
+    case -1:
+      fprintf(stderr, "Unable to fork() to go into back-ground\n");
+      result = -1;
+      goto done;
+      break;
+
+    case 0:
+      break;
+      
+    default:
+      /* Let's call _exit() rather that exit(), to avoid some bad side
+       * effects.
+       */
+      _exit(0);
+      break;
+  }
+
+  /* Let's call setsid() to create a new session and become its
+   * leader, create a new process group and become its leader, and
+   * detach completely from the terminal.
+   */
+  if (setsid() == -1)
+  {
+    fprintf(stderr, "Unable to call setsid()\n");
+    result = -1;
+    goto done;
+  }
+
+  /* Let's call fork() again, the father must die. After this, the new
+   * process is leader of nothing, has no terminal attached to it, and
+   * has no way to attach to a terminal.
+   */
+  son=fork();
+  switch (son)
+  {
+    case -1:
+      fprintf(stderr, "Unable to fork() again\n");
+      result = -1;
+      goto done;
+      break;
+
+    case 0:
+      break;
+      
+    default:
+      /* Again, let's call _exit() rather than exit(). */
+      _exit(0);
+      break;
+  }
+
+  /* ToDo: optional, do a chdir("/") to avoid blocking an unmount()
+   * from the system admin. If we do this, then all the file names
+   * must be converted into absolute file names.
+   */
+
+  /* ToDo: optional, do an umask(0) to control the file permissions on
+   * creation.
+   */
+
+  /* Let's close the file descriptors 0, 1, and 2 (stdin, stdout and
+   * stderr).
+   */
+  close(0);
+  close(1);
+  close(2);
+
+  /* Open stdin, stdout and stderr to /dev/null */
+  open("/dev/null", O_RDWR);
+  dup(0);
+  dup(0);
+
+done:
+  if (result)
+    exit(result);
+}
+
+
 /******
  * int main(int argc, char **argv)
  *
@@ -577,59 +677,53 @@ int main(int argc, char **argv)
   signal(SIGPIPE, SIGPIPEhandler);
   
   if (!debug)
-    child=fork();
+    beadaemon();
 
-  if (!child)
+  while (1)
   {
-    while (1)
+    if (debug)
+      printf("Attempting to open %s\n", output);
+
+    f=fopen(output, "w");
+    if (!f)
     {
-      if (debug)
-	printf("Attempting to open %s\n", output);
-      
-      f=fopen(output, "w");
-      if (!f)
-      {
-	fprintf(stderr, "Unable to open '%s'\n", output);
-	continue;
-      }
-
-      if (debug)
-	printf("Outputing a signature\n");
-      
-      if (insertdashes)
-        fprintf(f, "-- \n");
-      fprintf(f, "%s", fixedsig);
-      switch (order)
-      {
-        case oRegular: fprintf(f, "%s", sigs[cursig]);
-                       cursig++;
-                       if (cursig == nbsigs)
-                         cursig=0;
-                       break;
-        case oReverse: cursig--;
-                       if (cursig == -1)
-                         cursig=nbsigs-1;
-                       fprintf(f, "%s", sigs[cursig]);
-                       break;
-        case oRandom : fprintf(f, "%s", sigs[rand()%nbsigs]);
-                       break;
-        default      : break;
-      }
-      
-      if (debug)
-	printf("Closing the file\n");
-      
-      fclose(f);
-
-      if (debug)
-	printf("Sleeping for 1 second\n");
-      
-      sleep(1);
+      fprintf(stderr, "Unable to open '%s'\n", output);
+      continue;
     }
+
+    if (debug)
+      printf("Outputing a signature\n");
+
+    if (insertdashes)
+      fprintf(f, "-- \n");
+    fprintf(f, "%s", fixedsig);
+    switch (order)
+    {
+      case oRegular: fprintf(f, "%s", sigs[cursig]);
+		     cursig++;
+		     if (cursig == nbsigs)
+		       cursig=0;
+		     break;
+      case oReverse: cursig--;
+		     if (cursig == -1)
+		       cursig=nbsigs-1;
+		     fprintf(f, "%s", sigs[cursig]);
+		     break;
+      case oRandom : fprintf(f, "%s", sigs[rand()%nbsigs]);
+		     break;
+      default      : break;
+    }
+
+    if (debug)
+      printf("Closing the file\n");
+
+    fclose(f);
+
+    if (debug)
+      printf("Sleeping for 1 second\n");
+
+    sleep(1);
   }
 
-  if (debug)
-    printf("Quitting\n");
-  
   return 0;
 }
