@@ -1,7 +1,11 @@
-static char rcsid[]="$Id: fbcdump.c,v 1.8 2004/02/02 00:50:11 eabalea Exp $";
+static char rcsid[]="$Id: fbcdump.c,v 1.9 2004/02/02 16:53:07 eabalea Exp $";
 
 /*
  * $Log: fbcdump.c,v $
+ * Revision 1.9  2004/02/02 16:53:07  eabalea
+ * Ajout de messages d'erreurs plus explicites.
+ * S'il y a une erreur à la liste des lecteurs, on arrête.
+ *
  * Revision 1.8  2004/02/02 00:50:11  eabalea
  * no message
  *
@@ -1221,44 +1225,70 @@ char *SCardError(unsigned long int rv)
 {
 	static char errormsg[1024];
 
+#ifndef SCARD_E_NO_READERS_AVAILABLE
+#define SCARD_E_NO_READERS_AVAILABLE 0x8010002eUL
+#endif
 	switch (rv)
 	{
-	case SCARD_E_CANCELLED           : sprintf(errormsg, "SCARD_E_CANCELLED"); break;
-	case SCARD_E_CANT_DISPOSE        : sprintf(errormsg, "SCARD_E_CANT_DISPOSE"); break;
-	case SCARD_E_CARD_UNSUPPORTED    : sprintf(errormsg, "SCARD_E_CARD_UNSUPPORTED"); break;
-	case SCARD_E_DUPLICATE_READER    : sprintf(errormsg, "SCARD_E_DUPLICATE_READER"); break;
-	case SCARD_E_INSUFFICIENT_BUFFER : sprintf(errormsg, "SCARD_E_INSUFFICIENT_BUFFER"); break;
-	case SCARD_E_INVALID_ATR         : sprintf(errormsg, "SCARD_E_INVALID_ATR"); break;
-	case SCARD_E_INVALID_HANDLE      : sprintf(errormsg, "SCARD_E_INVALID_HANDLE"); break;
-	case SCARD_E_INVALID_PARAMETER   : sprintf(errormsg, "SCARD_E_INVALID_PARAMETER"); break;
-	case SCARD_E_INVALID_TARGET      : sprintf(errormsg, "SCARD_E_INVALID_TARGET"); break;
-	case SCARD_E_INVALID_VALUE       : sprintf(errormsg, "SCARD_E_INVALID_VALUE"); break;
-	case SCARD_E_NOT_READY           : sprintf(errormsg, "SCARD_E_NOT_READY"); break;
-	case SCARD_E_NOT_TRANSACTED      : sprintf(errormsg, "SCARD_E_NOT_TRANSACTED"); break;
-	case SCARD_E_NO_MEMORY           : sprintf(errormsg, "SCARD_E_NO_MEMORY"); break;
-	case SCARD_E_NO_SERVICE          : sprintf(errormsg, "SCARD_E_NO_SERVICE"); break;
-	case SCARD_E_NO_SMARTCARD        : sprintf(errormsg, "SCARD_E_NO_SMARTCARD"); break;
-	case SCARD_E_PCI_TOO_SMALL       : sprintf(errormsg, "SCARD_E_PCI_TOO_SMALL"); break;
-	case SCARD_E_PROTO_MISMATCH      : sprintf(errormsg, "SCARD_E_PROTO_MISMATCH"); break;
-	case SCARD_E_READER_UNAVAILABLE  : sprintf(errormsg, "SCARD_E_READER_UNAVAILABLE"); break;
-	case SCARD_E_READER_UNSUPPORTED  : sprintf(errormsg, "SCARD_E_READER_UNSUPPORTED"); break;
-	case SCARD_E_SERVICE_STOPPED     : sprintf(errormsg, "SCARD_E_SERVICE_STOPPED"); break;
-	case SCARD_E_SHARING_VIOLATION   : sprintf(errormsg, "SCARD_E_SHARING_VIOLATION"); break;
-	case SCARD_E_SYSTEM_CANCELLED    : sprintf(errormsg, "SCARD_E_SYSTEM_CANCELLED"); break;
-	case SCARD_E_TIMEOUT             : sprintf(errormsg, "SCARD_E_TIMEOUT"); break;
-	case SCARD_E_UNKNOWN_CARD        : sprintf(errormsg, "SCARD_E_UNKNOWN_CARD"); break;
-	case SCARD_E_UNKNOWN_READER      : sprintf(errormsg, "SCARD_E_UNKNOWN_READER"); break;
-	case SCARD_F_COMM_ERROR          : sprintf(errormsg, "SCARD_F_COMM_ERROR"); break;
-	case SCARD_F_INTERNAL_ERROR      : sprintf(errormsg, "SCARD_F_INTERNAL_ERROR"); break;
-	case SCARD_F_UNKNOWN_ERROR       : sprintf(errormsg, "SCARD_F_UNKNOWN_ERROR"); break;
-	case SCARD_F_WAITED_TOO_LONG     : sprintf(errormsg, "SCARD_F_WAITED_TOO_LONG"); break;
-	case SCARD_S_SUCCESS             : sprintf(errormsg, "SCARD_S_SUCCESS"); break;
-	case SCARD_W_REMOVED_CARD        : sprintf(errormsg, "SCARD_W_REMOVED_CARD"); break;
-	case SCARD_W_RESET_CARD          : sprintf(errormsg, "SCARD_W_RESET_CARD"); break;
-	case SCARD_W_UNPOWERED_CARD      : sprintf(errormsg, "SCARD_W_UNPOWERED_CARD"); break;
-	case SCARD_W_UNRESPONSIVE_CARD   : sprintf(errormsg, "SCARD_W_UNRESPONSIVE_CARD"); break;
-	case SCARD_W_UNSUPPORTED_CARD    : sprintf(errormsg, "SCARD_W_UNSUPPORTED_CARD"); break;
-	default                          : sprintf(errormsg, "Unknown error code (0x%08x)", rv); break;
+//	case SCARD_E_BAD_SEEK:                sprintf(errormsg, "%s: %s", "SCARD_E_BAD_SEEK", "An error occurred in setting the smart card file object pointer."); break;
+    case SCARD_E_CANCELLED:               sprintf(errormsg, "%s: %s", "SCARD_E_CANCELLED", "The action was canceled by an SCardCancel request."); break;
+    case SCARD_E_CANT_DISPOSE:            sprintf(errormsg, "%s: %s", "SCARD_E_CANT_DISPOSE", "The system could not dispose of the media in the requested manner."); break;
+    case SCARD_E_CARD_UNSUPPORTED:        sprintf(errormsg, "%s: %s", "SCARD_E_CARD_UNSUPPORTED", "The smart card does not meet minimal requirements for support."); break;
+//	case SCARD_E_CERTIFICATE_UNAVAILABLE: sprintf(errormsg, "%s: %s", "SCARD_E_CERTIFICATE_UNAVAILABLE", "The requested certificate could not be obtained."); break;
+//	case SCARD_E_COMM_DATA_LOST:          sprintf(errormsg, "%s: %s", "SCARD_E_COMM_DATA_LOST", "A communications error with the smart card has been detected."); break;
+//	case SCARD_E_DIR_NOT_FOUND:           sprintf(errormsg, "%s: %s", "SCARD_E_DIR_NOT_FOUND", "The specified directory does not exist in the smart card."); break;
+	case SCARD_E_DUPLICATE_READER:        sprintf(errormsg, "%s: %s", "SCARD_E_DUPLICATE_READER", "The reader driver didn't produce a unique reader name."); break;
+//	case SCARD_E_FILE_NOT_FOUND:          sprintf(errormsg, "%s: %s", "SCARD_E_FILE_NOT_FOUND", "The specified file does not exist in the smart card."); break;
+//	case SCARD_E_ICC_CREATEORDER:         sprintf(errormsg, "%s: %s", "SCARD_E_ICC_CREATEORDER", "The requested order of object creation is not supported."); break;
+//	case SCARD_E_ICC_INSTALLATION:        sprintf(errormsg, "%s: %s", "SCARD_E_ICC_INSTALLATION", "No primary provider can be found for the smart card."); break;
+	case SCARD_E_INSUFFICIENT_BUFFER:     sprintf(errormsg, "%s: %s", "SCARD_E_INSUFFICIENT_BUFFER", "The data buffer for returned data is too small for the returned data."); break;
+	case SCARD_E_INVALID_ATR:             sprintf(errormsg, "%s: %s", "SCARD_E_INVALID_ATR", "An ATR string obtained from the registry is not a valid ATR string."); break;
+//	case SCARD_E_INVALID_CHV:             sprintf(errormsg, "%s: %s", "SCARD_E_INVALID_CHV", "The supplied PIN is incorrect."); break;
+	case SCARD_E_INVALID_HANDLE:          sprintf(errormsg, "%s: %s", "SCARD_E_INVALID_HANDLE", "The supplied handle was invalid."); break;
+	case SCARD_E_INVALID_PARAMETER:       sprintf(errormsg, "%s: %s", "SCARD_E_INVALID_PARAMETER", "One or more of the supplied parameters could not be properly interpreted."); break;
+	case SCARD_E_INVALID_TARGET:          sprintf(errormsg, "%s: %s", "SCARD_E_INVALID_TARGET", "Registry startup information is missing or invalid."); break;
+	case SCARD_E_INVALID_VALUE:           sprintf(errormsg, "%s: %s", "SCARD_E_INVALID_VALUE", "One or more of the supplied parameter values could not be properly interpreted."); break;
+//	case SCARD_E_NO_ACCESS:               sprintf(errormsg, "%s: %s", "SCARD_E_NO_ACCESS", "Access is denied to the file."); break;
+//	case SCARD_E_NO_DIR:                  sprintf(errormsg, "%s: %s", "SCARD_E_NO_DIR", "The supplied path does not represent a smart card directory."); break;
+//	case SCARD_E_NO_FILE:                 sprintf(errormsg, "%s: %s", "SCARD_E_NO_FILE", "The supplied path does not represent a smart card file."); break;
+	case SCARD_E_NO_MEMORY:               sprintf(errormsg, "%s: %s", "SCARD_E_NO_MEMORY", "Not enough memory available to complete this command."); break;
+	case SCARD_E_NO_READERS_AVAILABLE:    sprintf(errormsg, "%s: %s", "SCARD_E_NO_READERS_AVAILABLE", "No smart card reader is available."); break;
+	case SCARD_E_NO_SERVICE:              sprintf(errormsg, "%s: %s", "SCARD_E_NO_SERVICE", "The smart card resource manager is not running."); break;
+	case SCARD_E_NO_SMARTCARD:            sprintf(errormsg, "%s: %s", "SCARD_E_NO_SMARTCARD", "The operation requires a smart card, but no smart card is currently in the device."); break;
+//	case SCARD_E_NO_SUCH_CERTIFICATE:     sprintf(errormsg, "%s: %s", "SCARD_E_NO_SUCH_CERTIFICATE", "The requested certificate does not exist."); break;
+	case SCARD_E_NOT_READY:               sprintf(errormsg, "%s: %s", "SCARD_E_NOT_READY", "The reader or card is not ready to accept commands."); break;
+	case SCARD_E_NOT_TRANSACTED:          sprintf(errormsg, "%s: %s", "SCARD_E_NOT_TRANSACTED", "An attempt was made to end a non-existent transaction."); break;
+	case SCARD_E_PCI_TOO_SMALL:           sprintf(errormsg, "%s: %s", "SCARD_E_PCI_TOO_SMALL", "The PCI receive buffer was too small."); break;
+	case SCARD_E_PROTO_MISMATCH:          sprintf(errormsg, "%s: %s", "SCARD_E_PROTO_MISMATCH", "The requested protocols are incompatible with the protocol currently in use with the card."); break;
+	case SCARD_E_READER_UNAVAILABLE:      sprintf(errormsg, "%s: %s", "SCARD_E_READER_UNAVAILABLE", "The specified reader is not currently available for use."); break;
+	case SCARD_E_READER_UNSUPPORTED:      sprintf(errormsg, "%s: %s", "SCARD_E_READER_UNSUPPORTED", "The reader driver does not meet minimal requirements for support."); break;
+	case SCARD_E_SERVICE_STOPPED:         sprintf(errormsg, "%s: %s", "SCARD_E_SERVICE_STOPPED", "The smart card resource manager has shut down."); break;
+	case SCARD_E_SHARING_VIOLATION:       sprintf(errormsg, "%s: %s", "SCARD_E_SHARING_VIOLATION", "The smart card cannot be accessed because of other outstanding connections."); break;
+	case SCARD_E_SYSTEM_CANCELLED:        sprintf(errormsg, "%s: %s", "SCARD_E_SYSTEM_CANCELLED", "The action was canceled by the system, presumably to log off or shut down."); break;
+	case SCARD_E_TIMEOUT:                 sprintf(errormsg, "%s: %s", "SCARD_E_TIMEOUT", "The user-specified timeout value has expired."); break;
+//	case SCARD_E_UNEXPECTED:              sprintf(errormsg, "%s: %s", "SCARD_E_UNEXPECTED", "An unexpected card error has occurred."); break;
+	case SCARD_E_UNKNOWN_CARD:            sprintf(errormsg, "%s: %s", "SCARD_E_UNKNOWN_CARD", "The specified smart card name is not recognized."); break;
+	case SCARD_E_UNKNOWN_READER:          sprintf(errormsg, "%s: %s", "SCARD_E_UNKNOWN_READER", "The specified reader name is not recognized."); break;
+//	case SCARD_E_UNKNOWN_RES_MNG:         sprintf(errormsg, "%s: %s", "SCARD_E_UNKNOWN_RES_MNG", "An unrecognized error code was returned from a layered component."); break;
+//	case SCARD_E_UNSUPPORTED_FEATURE:     sprintf(errormsg, "%s: %s", "SCARD_E_UNSUPPORTED_FEATURE", "This smart card does not support the requested feature."); break;
+//	case SCARD_E_WRITE_TOO_MANY:          sprintf(errormsg, "%s: %s", "SCARD_E_WRITE_TOO_MANY", "An attempt was made to write more data than would fit in the target object."); break;
+	case SCARD_F_COMM_ERROR:              sprintf(errormsg, "%s: %s", "SCARD_F_COMM_ERROR", "An internal communications error has been detected."); break;
+	case SCARD_F_INTERNAL_ERROR:          sprintf(errormsg, "%s: %s", "SCARD_F_INTERNAL_ERROR", "An internal consistency check failed."); break;
+	case SCARD_F_UNKNOWN_ERROR:           sprintf(errormsg, "%s: %s", "SCARD_F_UNKNOWN_ERROR", "An internal error has been detected, but the source is unknown."); break;
+	case SCARD_F_WAITED_TOO_LONG:         sprintf(errormsg, "%s: %s", "SCARD_F_WAITED_TOO_LONG", "An internal consistency timer has expired."); break;
+	case SCARD_P_SHUTDOWN:                sprintf(errormsg, "%s: %s", "SCARD_P_SHUTDOWN", "The operation has been aborted to allow the server application to exit."); break;
+	case SCARD_S_SUCCESS:                 sprintf(errormsg, "%s: %s", "SCARD_S_SUCCESS", "No error was encountered."); break;
+//	case SCARD_W_CANCELLED_BY_USER:       sprintf(errormsg, "%s: %s", "SCARD_W_CANCELLED_BY_USER", "The action was cancelled by the user."); break;
+//	case SCARD_W_CHV_BLOCKED:             sprintf(errormsg, "%s: %s", "SCARD_W_CHV_BLOCKED", "The card cannot be accessed because the maximum number of PIN entry attempts has been reached."); break;
+//	case SCARD_W_EOF:                     sprintf(errormsg, "%s: %s", "SCARD_W_EOF", "The end of the smart card file has been reached."); break;
+	case SCARD_W_REMOVED_CARD:            sprintf(errormsg, "%s: %s", "SCARD_W_REMOVED_CARD", "The smart card has been removed, so that further communication is not possible."); break;
+	case SCARD_W_RESET_CARD:              sprintf(errormsg, "%s: %s", "SCARD_W_RESET_CARD", "The smart card has been reset, so any shared state information is invalid."); break;
+//	case SCARD_W_SECURITY_VIOLATION:      sprintf(errormsg, "%s: %s", "SCARD_W_SECURITY_VIOLATION", "Access was denied because of a security violation."); break;
+	case SCARD_W_UNPOWERED_CARD:          sprintf(errormsg, "%s: %s", "SCARD_W_UNPOWERED_CARD", "Power has been removed from the smart card, so that further communication is not possible."); break;
+	case SCARD_W_UNRESPONSIVE_CARD:       sprintf(errormsg, "%s: %s", "SCARD_W_UNRESPONSIVE_CARD", "The smart card is not responding to a reset."); break;
+	case SCARD_W_UNSUPPORTED_CARD:        sprintf(errormsg, "%s: %s", "SCARD_W_UNSUPPORTED_CARD", "The reader cannot communicate with the card, due to ATR string configuration conflicts."); break;
+//	case SCARD_W_WRONG_CHV:               sprintf(errormsg, "%s: %s", "SCARD_W_WRONG_CHV", "The card cannot be accessed because the wrong PIN was presented."); break;
+	default:                              sprintf(errormsg, "Unknown error code (0x%08x)", rv); break;
 	}
 
 	return errormsg;
@@ -2560,7 +2590,10 @@ int main(int argc, char **argv)
 
 	/* On cherche ensuite la liste des lecteurs enregistrés */
 	if ((rv=SCardListReaders(context, NULL, NULL, &taille)) != SCARD_S_SUCCESS)
+	{
         printf("Erreur lors de la r‚cup‚ration de la liste des lecteurs de cartes (%s).\n", SCardError(rv));
+		return EXIT_FAILURE;
+	}
 	else
 	{
 		liste=(char*)malloc(taille);
