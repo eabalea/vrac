@@ -3,34 +3,26 @@
 <pre>
 <h1>Build Log</h1>
 <h3>
---------------------Configuration: fbcdump - Win32 Release--------------------
+
+--------------------Configuration: fbcdump - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\eabalea\LOCALS~1\Temp\RSP7.tmp" with contents
+Creating temporary file "C:\DOCUME~1\eabalea\LOCALS~1\Temp\RSP3F3B.tmp" with contents
 [
-/nologo /ML /W3 /GX /O2 /I "c:\openssl\include" /D "NDEBUG" /D "WIN32" /D "_CONSOLE" /D "_MBCS" /D "NOOPENSSL" /Fp"Release/fbcdump.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+/nologo /MD /W3 /Gm /GX /ZI /Od /I "c:\openssl\include" /D "_DEBUG" /D "WIN32" /D "_CONSOLE" /D "_MBCS" /D "NOOPENSSL" /Fp"Debug/fbcdump.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
 "C:\MyProjects\fbcdump\fbcdump.c"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\eabalea\LOCALS~1\Temp\RSP7.tmp" 
-Creating temporary file "C:\DOCUME~1\eabalea\LOCALS~1\Temp\RSP8.tmp" with contents
+Creating command line "cl.exe @C:\DOCUME~1\eabalea\LOCALS~1\Temp\RSP3F3B.tmp" 
+Creating temporary file "C:\DOCUME~1\eabalea\LOCALS~1\Temp\RSP3F3C.tmp" with contents
 [
-kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib winscard.lib scarddlg.lib libeay32.lib /nologo /subsystem:console /incremental:no /pdb:"Release/fbcdump.pdb" /machine:I386 /out:"Release/fbcdump.exe" /libpath:"c:\openssl\lib" 
-.\Release\fbcdump.obj
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib winscard.lib scarddlg.lib libeay32.lib /nologo /subsystem:console /incremental:yes /pdb:"Debug/fbcdump.pdb" /debug /machine:I386 /out:"Debug/fbcdump.exe" /pdbtype:sept /libpath:"c:\openssl\lib" 
+.\Debug\fbcdump.obj
 ]
-Creating command line "link.exe @C:\DOCUME~1\eabalea\LOCALS~1\Temp\RSP8.tmp"
+Creating command line "link.exe @C:\DOCUME~1\eabalea\LOCALS~1\Temp\RSP3F3C.tmp"
 <h3>Output Window</h3>
 Compiling...
 fbcdump.c
 Linking...
-
-
-
-<h3>Results</h3>
-fbcdump.exe - 0 error(s), 0 warning(s)
-<h3>
---------------------Configuration: fbcdump - Win32 Debug--------------------
-</h3>
-<h3>Command Lines</h3>
 
 
 
