@@ -35,7 +35,7 @@
 
  ***************************************************************************/
 
-static char rcsid[]="$Id: g_barbre.c,v 1.3 1998/03/20 11:48:34 eabalea Exp $";
+static char rcsid[]="$Id: g_barbre.c,v 1.4 1999/02/26 18:09:15 eabalea Exp $";
 
 /* G_BARBRE.C: Routines pour une gestion de B-Arbre g‚n‚rique.
    Les cl‚s sont des pointeurs g‚n‚riques (void *).
@@ -44,6 +44,9 @@ static char rcsid[]="$Id: g_barbre.c,v 1.3 1998/03/20 11:48:34 eabalea Exp $";
 
 /*
  * $Log: g_barbre.c,v $
+ * Revision 1.4  1999/02/26 18:09:15  eabalea
+ * Mise à jour pour compilation sous Linux
+ *
  * Revision 1.3  1998/03/20 11:48:34  eabalea
  * Ajout de commentaires pour l'outil de g‚n‚ration automatique de doc technique
  *
@@ -58,7 +61,9 @@ static char rcsid[]="$Id: g_barbre.c,v 1.3 1998/03/20 11:48:34 eabalea Exp $";
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#ifdef __DJGPP__
 #include <mem.h>
+#endif
 
 #define M 16
 #define MM 32
