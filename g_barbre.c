@@ -1,4 +1,4 @@
-static char rcsid[]="$Id";
+static char rcsid[]="$Id: g_barbre.c,v 1.2 1997/04/14 15:48:37 eabalea Exp $";
 
 /* G_BARBRE.C: Routines pour une gestion de B-Arbre g‚n‚rique.
    Les cl‚s sont des pointeurs g‚n‚riques (void *).
@@ -7,6 +7,9 @@ static char rcsid[]="$Id";
 
 /*
  * $Log: g_barbre.c,v $
+ * Revision 1.2  1997/04/14 15:48:37  eabalea
+ * Correction du keyword Id
+ *
  * Revision 1.1  1997/04/14 15:47:39  eabalea
  * Initial revision
  *
