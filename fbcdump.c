@@ -1,7 +1,10 @@
-static char rcsid[]="$Id: fbcdump.c,v 1.6 2003/06/23 09:53:25 eabalea Exp $";
+static char rcsid[]="$Id: fbcdump.c,v 1.7 2003/06/24 17:57:29 eabalea Exp $";
 
 /*
  * $Log: fbcdump.c,v $
+ * Revision 1.7  2003/06/24 17:57:29  eabalea
+ * Ajout d'une conversion Francs->Euros automatique dès que la devise 0x250 est détectée
+ *
  * Revision 1.6  2003/06/23 09:53:25  eabalea
  * Ajout de la directive NOOPENSSL,
  * suppression de code inutile,
@@ -1815,29 +1818,29 @@ void AfficheIdentitePorteur(IdentitePorteur *x)
 	{
 		if (BIN >= Cartes[i].debutbin && BIN <= Cartes[i].finbin)
 		{
-			printf(" (%s) ", Cartes[i].nombanque);
+			printf(" (%s - ", Cartes[i].nombanque);
 			switch (Cartes[i].typecarte)
 			{
 			case -1:
-				printf("Carte de test");
+				printf("Carte de test)");
 				break;
 			case 0:
-				printf("Carte bleue nationale");
+				printf("Carte bleue nationale)");
 				break;
 			case 1:
-				printf("Carte VISA internationale");
+				printf("Carte VISA internationale)");
 				break;
 			case 2:
-				printf("Carte EuroCard/MasterCard");
+				printf("Carte EuroCard/MasterCard)");
 				break;
 			case 3:
-				printf("Carte VISA Premier");
+				printf("Carte VISA Premier)");
 				break;
 			case 4:
-				printf("Carte verte nationale ?");
+				printf("Carte verte nationale ?)");
 				break;
 			default:
-				printf("Carte de type inconnu");
+				printf("Carte de type inconnu)");
 				break;
 			}
 			trouve=1;
@@ -1845,7 +1848,7 @@ void AfficheIdentitePorteur(IdentitePorteur *x)
 		i++;
 	}
 	if (!trouve)
-		printf(" (Banque inconnue) Carte de type inconnu");
+		printf(" (Banque inconnue - Carte de type inconnu)");
 
 	printf("\n");
 	printf("    Code Usage = %03x (", x->CodeUsage);
@@ -2082,6 +2085,7 @@ void AffichePlafonds(DonneesPlafond *x)
 {
 	int i;
 	double exposant;
+	int conveuros = 0;
 	Prestataire *P;
 
 	printf("\n    Bloc prestataire 04 (Plafonds)\n");
@@ -2093,6 +2097,7 @@ void AffichePlafonds(DonneesPlafond *x)
 	if (!P)
         printf("    Exposant mon‚taire inconnu\n");
 	else
+	{
 		switch (P->Identite->Exposant)
 		{
 		case 1:  exposant=0.0001; break;
@@ -2103,6 +2108,12 @@ void AffichePlafonds(DonneesPlafond *x)
 		case 6:  exposant=10; break;
         default: exposant=1; printf("    Exposant mon‚taire inconnu\n"); break;
 		}
+		if (P->Identite->CodeDevise == 0x250)
+		{
+			conveuros = 1;
+			exposant = exposant/6.55957;
+		}
+	}
 
 	for(i=0; i < x->num; i++)
 	{
@@ -2130,7 +2141,7 @@ void AffichePlafonds(DonneesPlafond *x)
 		case 15: printf("mensuel, "); break;
         default: printf("p‚riodicit‚ inconnue, "); break;
 		}
-		printf("%10.2f\n", (double)(x->Plafond[i].Montant)*exposant);
+		printf("%10.2f %s\n", (double)(x->Plafond[i].Montant)*exposant, conveuros?"euros":"unit‚s");
 	}
 }
 
@@ -2169,7 +2180,8 @@ void AfficheTransactions(unsigned char *buf, int len)
 		jour,
 		mois,
 		annee,
-		montant;
+		montant,
+		conveuros = 0;
 	double exposant = 1.0;
 	Prestataire *P;
 
@@ -2182,6 +2194,7 @@ void AfficheTransactions(unsigned char *buf, int len)
 	if (!P)
         printf("    Exposant mon‚taire inconnu\n");
 	else
+	{
 		switch (P->Identite->Exposant)
 		{
 		case 1:  exposant=0.0001; break;
@@ -2192,6 +2205,12 @@ void AfficheTransactions(unsigned char *buf, int len)
 		case 6:  exposant=10; break;
         default: exposant=1; printf("    Exposant mon‚taire inconnu\n"); break;
 		}
+		if (P->Identite->CodeDevise == 0x250)
+		{
+			conveuros = 1;
+			exposant = exposant/6.55957;
+		}
+	}
 
 	while (buf[pos] != 0xFF)
 	{
@@ -2230,7 +2249,7 @@ void AfficheTransactions(unsigned char *buf, int len)
 				printf(", sous plafond");
 			else
 				printf(", hors plafond");
-		    printf(", montant: %10.2f unit‚s", (double)(montant)*exposant);
+			printf(", montant: %10.2f %s", (double)(montant)*exposant, conveuros?"euros":"unit‚s");
 
 			printf("\n");
 		}
