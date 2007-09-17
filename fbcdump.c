@@ -1,7 +1,11 @@
-static char rcsid[]="$Id: fbcdump.c,v 1.10 2007/09/17 22:14:16 eabalea Exp $";
+static char rcsid[]="$Id: fbcdump.c,v 1.11 2007/09/17 22:26:10 eabalea Exp $";
 
 /*
  * $Log: fbcdump.c,v $
+ * Revision 1.11  2007/09/17 22:26:10  eabalea
+ * Dans la Zone de Transactions, le mois lors d'un changement est encodé
+ * en BCD.
+ *
  * Revision 1.10  2007/09/17 22:14:16  eabalea
  * Modifications pour compilation sous Linux.
  *
@@ -2337,7 +2341,7 @@ void AfficheTransactions(unsigned char *buf, int len)
     {
       annee=buf[pos+2];
       mois=buf[pos+3];
-      printf("    Changement de mois: %d/%d\n", mois, (annee<80)?(annee+2000):(annee+1900));
+      printf("    Changement de mois: %d/%d\n", (mois>9)?(mois-6):(mois), (annee<80)?(annee+2000):(annee+1900));
     }
     else
     {
