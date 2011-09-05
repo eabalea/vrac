@@ -1,49 +1,4 @@
-static char rcsid[]="$Id: fbcdump.c,v 1.11 2007/09/17 22:26:10 eabalea Exp $";
-
-/*
- * $Log: fbcdump.c,v $
- * Revision 1.11  2007/09/17 22:26:10  eabalea
- * Dans la Zone de Transactions, le mois lors d'un changement est encodÃ©
- * en BCD.
- *
- * Revision 1.10  2007/09/17 22:14:16  eabalea
- * Modifications pour compilation sous Linux.
- *
- * Revision 1.9  2004/02/02 16:53:07  eabalea
- * Ajout de messages d'erreurs plus explicites.
- * S'il y a une erreur à la liste des lecteurs, on arrête.
- *
- * Revision 1.8  2004/02/02 00:50:11  eabalea
- * no message
- *
- * Revision 1.7  2003/06/24 17:57:29  eabalea
- * Ajout d'une conversion Francs->Euros automatique dès que la devise 0x250 est détectée
- *
- * Revision 1.6  2003/06/23 09:53:25  eabalea
- * Ajout de la directive NOOPENSSL,
- * suppression de code inutile,
- * correction des caractères accentués pour affichage dans fenêtre console
- *
- * Revision 1.5  2003/06/20 16:03:11  eabalea
- * Affichage sous forme de menu, décodage des transactions
- *
- * Revision 1.4  2001/07/27 23:23:03  eabalea
- * Modifs, pour rendre l'utilisation moins linéaire.
- *
- * Revision 1.3  2001/06/26 06:04:51  eabalea
- * Meilleure gestion des erreurs
- * Choix du lecteur PC/SC à utiliser
- * La VA subit un début de vérification (le chiffrement RSA
- * est effectué, un dump suit)
- *
- * Revision 1.2  2000/07/09 14:16:30  eabalea
- * Mise à jour, ajout de prestataires décodés
- *
- * Revision 1.1.1.1  2000/07/09 10:48:15  eabalea
- * Programme permettant d'afficher le contenu d'une carte bancaire
- * B0'
- *
- */
+static char rcsid[]="$Id: fbcdump.c,v 1.12 2011/09/05 16:36:59 eabalea Exp $";
 
 #include <stdio.h>
 #include <winscard.h>
@@ -64,18 +19,18 @@ static char rcsid[]="$Id: fbcdump.c,v 1.11 2007/09/17 22:26:10 eabalea Exp $";
 #define MAX_ATR_SIZE 32
 #endif
 
-/* Todo: intégrer les infos ci-dessous, à propos des clés allongées (VS):
-Crypto: Les clés 768, 896, 1024...
-Posté le 08 Dec 2001 à 13:23:00 par
+/* Todo: intÃ©grer les infos ci-dessous, Ã  propos des clÃ©s allongÃ©es (VS):
+Crypto: Les clÃ©s 768, 896, 1024...
+PostÃ© le 08 Dec 2001 Ã  13:23:00 par
 
-[Cartes à puces] upag a écrit : "Concaténations d'infos sur clés 768:
+[Cartes Ã  puces] upag a Ã©crit : "ConcatÃ©nations d'infos sur clÃ©s 768:
 
-Concernant les clés pub VS, il en existe 2 de 768 bits*, 2 de 896 bits et 2 de 1024 bits + peut être des clés de test.
-Celles de 1024, on est pas prêt de les voir dans les cartes, car les TPE rament trop pour vérifier la VS.
+Concernant les clÃ©s pub VS, il en existe 2 de 768 bits*, 2 de 896 bits et 2 de 1024 bits + peut Ãªtre des clÃ©s de test.
+Celles de 1024, on est pas prÃªt de les voir dans les cartes, car les TPE rament trop pour vÃ©rifier la VS.
 
 Header VS = 2E 16 XX CLE CCE
 XX (8 bits) est la longueur (en octets) du prestataire 16, header exclus.
-CLE (3 bits) est l'indice de la clé publique à utiliser :
+CLE (3 bits) est l'indice de la clÃ© publique Ã  utiliser :
 0 : test, 768,896 ou 1024
 1 : ClePub 1, 768 bits
 2 : ClePub 2, 768 bits
@@ -88,31 +43,31 @@ Quelques explications :
 
 00 / 01 / X / 00 / SHA-1(redondance)
 
-X = chaine de FFh dont la longueur est égale à la longueur en octets de la clé publique - 23
+X = chaine de FFh dont la longueur est Ã©gale Ã  la longueur en octets de la clÃ© publique - 23
 (donc pour 768 = 96 octets on a 96-23=73 octets FFh)
 SHA-1 = Secure Hash Algorithm 1
-redondance = 7 bits à 0 + 11 bits n° encarteur + 26 bits n° série + 21 bits à 0 +
-76 bits n° de carte (PAN) + 8 bits de PF du code service (si code service = 101, mettre 10) + les 16 bits de la date debut + les 16 bis de la date de fin; donc en tout 160 bits
+redondance = 7 bits Ã  0 + 11 bits nÂ° encarteur + 26 bits nÂ° sÃ©rie + 21 bits Ã  0 +
+76 bits nÂ° de carte (PAN) + 8 bits de PF du code service (si code service = 101, mettre 10) + les 16 bits de la date debut + les 16 bis de la date de fin; donc en tout 160 bits
 
-Précisions :
-Les 20 octets à la fin (de 9F 84 à AD 8B) sont le résultat du SHA-1 sur une valeur d'entrée constitué de :
-redondance = 7 bits à 0 + 11 bits n° encarteur + 26 bits n° série +
-76 bits n° de carte (PAN) + 8 bits de PF du code service + les 16 bits de la date début + les 16 bis de la date de fin; donc en tout 160 bits )
+PrÃ©cisions :
+Les 20 octets Ã  la fin (de 9F 84 Ã  AD 8B) sont le rÃ©sultat du SHA-1 sur une valeur d'entrÃ©e constituÃ© de :
+redondance = 7 bits Ã  0 + 11 bits nÂ° encarteur + 26 bits nÂ° sÃ©rie +
+76 bits nÂ° de carte (PAN) + 8 bits de PF du code service + les 16 bits de la date dÃ©but + les 16 bis de la date de fin; donc en tout 160 bits )
 Exemple bidon :
-entrée = 0000451e5aa (0 + encarteur + série)
+entrÃ©e = 0000451e5aa (0 + encarteur + sÃ©rie)
 + 4578 1234 5678 9012 fff + 10 + 9912 + 0101
 
-Tu donnes ces 160 bits à SHA.EXE et tu vas trouver : 04 a0 e8 67 14 etc etc
+Tu donnes ces 160 bits Ã  SHA.EXE et tu vas trouver : 04 a0 e8 67 14 etc etc
 
-Tu fais la même chose avec une vraie carte, tu calcules le sha et tu déchiffre la VS.
-Si le sha que tu trouves en déchiffrant la VS est pareille que celle calculée a partir des donnés de la carte, ta carte est bonne.
+Tu fais la mÃªme chose avec une vraie carte, tu calcules le sha et tu dÃ©chiffre la VS.
+Si le sha que tu trouves en dÃ©chiffrant la VS est pareille que celle calculÃ©e a partir des donnÃ©s de la carte, ta carte est bonne.
 
-Donc, ca empèche pas de cloner, juste de faire des "vraies" fausses cartes. sauf si qq'1 trouve la clé privée :=)
+Donc, ca empÃ¨che pas de cloner, juste de faire des "vraies" fausses cartes. sauf si qq'1 trouve la clÃ© privÃ©e :=)
 
 Annexe:
 -------
 
-Clé publique 2 (768):
+ClÃ© publique 2 (768):
 A3 99 A4 AD E1 BC EA 21 7F B7 74 B4 70 86 0D D1
 3B 34 F9 37 99 15 85 2D 9F D1 26 90 C4 5C 36 EC
 2C 3F E6 C9 77 0A 53 8A C6 36 50 47 44 70 3E 38
@@ -120,7 +75,7 @@ A3 99 A4 AD E1 BC EA 21 7F B7 74 B4 70 86 0D D1
 C0 87 6E 93 EB 4B AB F2 0D 10 A6 DC 13 7E 25 E8
 00 8B DE 57 7D 44 7C 50 67 4C B5 13 ED 47 05 15
 
-Clé publique 3 (896):
+ClÃ© publique 3 (896):
 9E EA E2 71 B5 0F BE 5C 6C 82 52 22 07 F2 D0 3F
 E0 5E 4F 96 41 E8 C7 34 F6 B6 85 DB A6 7F 94 04
 CF 13 0D 12 79 89 F0 A5 1F 78 B1 96 98 36 05 3F
@@ -129,45 +84,45 @@ EA FD E5 1E 34 CD 3B F3 04 4F 8A 46 FD AD C7 7A
 79 A3 5A 8C 75 C8 4A 76 F1 AB 4D BE 4A 45 67 BE
 1E 4D 87 83 C4 60 B9 36 A0 73 94 9F DF 00 B3 B1
 
-Auteurs inconnus à ce jour
+Auteurs inconnus Ã  ce jour
 
 Note: L'objet de la censure :("
 */
 
-/* Todo: autres infos sur les clés 768 bits:
+/* Todo: autres infos sur les clÃ©s 768 bits:
 
 avec pub768dec = 1550880802783769298423921500751307878471020215206711102793111990113875394553459999757605304671735856091597555389797408938173344043674704780986390069906679096728933081405044935969514508676239942493440750589270015739962374529363251827
 
-c'est curieux, quand je transforme la clepub0 de geoli de base 10 à base 16, je trouve ça :
+c'est curieux, quand je transforme la clepub0 de geoli de base 10 Ã  base 16, je trouve Ã§a :
 
 FFBAE2B499427CDF89A402CE0517100F9411BDABC3347540C55846A026523FA243AFC62D3B342B3AD5D5EC28FCF37AE546DD5E85628B31E7A0229F62A5F56E2E1FAD4B0B48677CCE728D6937FCBE18DFB673DC3E8CD4E9E18C0046C672A09273
 */
 
-/* Todo: intégrer les infos du programme ci-dessous:
+/* Todo: intÃ©grer les infos du programme ci-dessous:
  ***************************************************
 
-  Appels à PEEK:
-    bit de début de zone
+  Appels Ã  PEEK:
+    bit de dÃ©but de zone
 	zone
-	longueur à lire, en bits
+	longueur Ã  lire, en bits
 
-! Les zones affectées sont les suivantes
-! 	0 - Reponse au reset (initialisé par INIT.FOR)
-!	1 - Zone secrète
-!	2 - Zone d'accès
+! Les zones affectÃ©es sont les suivantes
+! 	0 - Reponse au reset (initialisÃ© par INIT.FOR)
+!	1 - Zone secrÃ¨te
+!	2 - Zone d'accÃ¨s
 !	3 - Zone confidentielle
 !	4 - Zone de transaction
 !	5 - Zone de lecture
 !	6 - Zone de fabrication
 !	7 - Zone des locks
-!   8 - VA une fois déchiffrée
+!   8 - VA une fois dÃ©chiffrÃ©e
 
-"Réponse au RESET :"
+"RÃ©ponse au RESET :"
 "=================="
 ""
 
 9 ZONE? IF
-    0 9 8 PEEK                  ! Lecture du caractère initial
+    0 9 8 PEEK                  ! Lecture du caractÃ¨re initial
     SWITCH
 	&3F CASE "Convention inverse" ENDCASE
 	&3B CASE "Convention directe" ENDCASE
@@ -175,9 +130,9 @@ FFBAE2B499427CDF89A402CE0517100F9411BDABC3347540C55846A026523FA243AFC62D3B342B3A
     ENDSWITCH
     ""
 
-    9 16 INITREADZONE           ! Adresse de départ
+    9 16 INITREADZONE           ! Adresse de dÃ©part
 
-    8 9 8 PEEK 4 SET? IF                ! Test de la présence de TA1
+    8 9 8 PEEK 4 SET? IF                ! Test de la prÃ©sence de TA1
 	9 8 READZONE
     ELSE
 	&11
@@ -257,7 +212,7 @@ FFBAE2B499427CDF89A402CE0517100F9411BDABC3347540C55846A026523FA243AFC62D3B342B3A
 	&0
     ENDIF
     DUP 255 = IF
-	"Temps de garde réduit à 11 etu"
+	"Temps de garde rÃ©duit Ã  11 etu"
 	DROP
     ELSE
 	"Temps de garde : " 12 + 0 STR CONCAT " etu" CONCAT
@@ -265,10 +220,10 @@ FFBAE2B499427CDF89A402CE0517100F9411BDABC3347540C55846A026523FA243AFC62D3B342B3A
     ""
 
     8 9 8 PEEK 7 SET? IF
-	"Caractères d'interface :"
+	"CaractÃ¨res d'interface :"
 	1                               ! Initial sequence number
 	REPEAT
-	"    Séquence " 1 + DUP 0 STR CONCAT
+	"    SÃ©quence " 1 + DUP 0 STR CONCAT
 	9 8 READZONE            ! Recovers TDn-1 (must be present)
 	DUP &0F AND " (T=" CONCAT 0 STR CONCAT ") :" CONCAT
 	DUP 4 SET? IF           ! IF TAn is present
@@ -297,7 +252,7 @@ ENDIF
 
 */
 
-/* Todo: intégrer les infos du programme ci-dessous:
+/* Todo: intÃ©grer les infos du programme ci-dessous:
  ***************************************************
 REFRESH
     0 0 4 PEEK 3 = IF
@@ -308,22 +263,22 @@ REFRESH
 
     0 5 LENZONE 1 - 32 FOR		! Balayage de la zone de lecture
 					! pour lire les informations
-	DUP 8 + 5 8 PEEK		! Récupération du prestataire
-	2 = IF				! Si identité
+	DUP 8 + 5 8 PEEK		! RÃ©cupÃ©ration du prestataire
+	2 = IF				! Si identitÃ©
 	    DUP DUP 44 + 5 20 PEEK 16 *
 	    SWAP 68 + 5 4 PEEK + SWITCH
-		&453300 &453399 INCASE 1 "Crédit Agricole" ENDCASE
-		&455660 &455674 INCASE 0 "Crédit du Nord" ENDCASE
-		&455675 &455684 INCASE 0 "Crédit du Nord" ENDCASE
-		&455685 &455694 INCASE 3 "Crédit du Nord" ENDCASE
-		&455695 &455699 INCASE 0 "Crédit Lyonnais" ENDCASE
-		&455800 &455899 INCASE 3 "Crédit Agricole" ENDCASE
+		&453300 &453399 INCASE 1 "CrÃ©dit Agricole" ENDCASE
+		&455660 &455674 INCASE 0 "CrÃ©dit du Nord" ENDCASE
+		&455675 &455684 INCASE 0 "CrÃ©dit du Nord" ENDCASE
+		&455685 &455694 INCASE 3 "CrÃ©dit du Nord" ENDCASE
+		&455695 &455699 INCASE 0 "CrÃ©dit Lyonnais" ENDCASE
+		&455800 &455899 INCASE 3 "CrÃ©dit Agricole" ENDCASE
 		&456100 &456139 INCASE 3 "C. C. F." ENDCASE
-		&456140 &456189 INCASE 3 "Société Générale" ENDCASE
-		&456190 &456199 INCASE 3 "Crédit du Nord" ENDCASE
-		&456200 &456269 INCASE 3 "Crédit Lyonnais" ENDCASE
-		&456270 &456285 INCASE 3 "Crédit du Nord" ENDCASE
-		&456286 &456299 INCASE 3 "Crédit du Nord" ENDCASE
+		&456140 &456189 INCASE 3 "SociÃ©tÃ© GÃ©nÃ©rale" ENDCASE
+		&456190 &456199 INCASE 3 "CrÃ©dit du Nord" ENDCASE
+		&456200 &456269 INCASE 3 "CrÃ©dit Lyonnais" ENDCASE
+		&456270 &456285 INCASE 3 "CrÃ©dit du Nord" ENDCASE
+		&456286 &456299 INCASE 3 "CrÃ©dit du Nord" ENDCASE
 		&497000 &497009 INCASE -1 "RESERVE GIE CB" ENDCASE
 		&497010 &497010 INCASE -1 "Carte de test" ENDCASE
 		&497011 &497013 INCASE 3 "LA POSTE" ENDCASE
@@ -333,29 +288,29 @@ REFRESH
 		&497050 &497068 INCASE 1 "LA POSTE" ENDCASE
 		&497099 &497099 INCASE 3 "LA POSTE" ENDCASE
 		&497100 &497177 INCASE 0 "C. C. F." ENDCASE
-		&497178 &497199 INCASE 0 "Crédit du Nord" ENDCASE
-		&497200 &497203 INCASE 0 "Crédit Lyonnais" ENDCASE
-		&497204 &497206 INCASE 3 "Crédit Lyonnais" ENDCASE
-		&497207 &497299 INCASE 0 "Crédit Lyonnais" ENDCASE
-		&497300 &497309 INCASE 0 "Société Générale" ENDCASE
-		&497320 &497399 INCASE 0 "Société Générale" ENDCASE
+		&497178 &497199 INCASE 0 "CrÃ©dit du Nord" ENDCASE
+		&497200 &497203 INCASE 0 "CrÃ©dit Lyonnais" ENDCASE
+		&497204 &497206 INCASE 3 "CrÃ©dit Lyonnais" ENDCASE
+		&497207 &497299 INCASE 0 "CrÃ©dit Lyonnais" ENDCASE
+		&497300 &497309 INCASE 0 "SociÃ©tÃ© GÃ©nÃ©rale" ENDCASE
+		&497320 &497399 INCASE 0 "SociÃ©tÃ© GÃ©nÃ©rale" ENDCASE
 		&497400 &497489 INCASE 0 "BNP" ENDCASE
 		&497490 &497490 INCASE 3 "BNP" ENDCASE
 		&497491 &497499 INCASE 0 "BNP" ENDCASE
 		&497500 &497599 INCASE 0 "Banque Populaire" ENDCASE
 		&497600 &497669 INCASE 0 "C. I. C." ENDCASE
-		&497670 &497670 INCASE 3 "Crédit du Nord" ENDCASE
-		&497671 &497699 INCASE 0 "Crédit du Nord" ENDCASE
-		&497700 &497799 INCASE 1 "Crédit Mutuel" ENDCASE
-		&497800 &497849 INCASE 0 "Caisse d'épargne" ENDCASE
-		&497850 &497899 INCASE 3 "Caisse d'épargne" ENDCASE
+		&497670 &497670 INCASE 3 "CrÃ©dit du Nord" ENDCASE
+		&497671 &497699 INCASE 0 "CrÃ©dit du Nord" ENDCASE
+		&497700 &497799 INCASE 1 "CrÃ©dit Mutuel" ENDCASE
+		&497800 &497849 INCASE 0 "Caisse d'Ã©pargne" ENDCASE
+		&497850 &497899 INCASE 3 "Caisse d'Ã©pargne" ENDCASE
 		&497900 &497939 INCASE 3 "BNP" ENDCASE
 		&497940 &497999 INCASE 0 "C. I. C." ENDCASE
-		&513100 &513199 INCASE 2 "Crédit Agricole" ENDCASE
-		&513200 &513299 INCASE 2 "Crédit Mutuel" ENDCASE
+		&513100 &513199 INCASE 2 "CrÃ©dit Agricole" ENDCASE
+		&513200 &513299 INCASE 2 "CrÃ©dit Mutuel" ENDCASE
 		&529500 &529599 INCASE -1 "RESERVE GIE CB" ENDCASE
-		&561200 &561299 INCASE 4 "Crédit Agricole" ENDCASE
-		&581700 &581799 INCASE 4 "Crédit Mutuel" ENDCASE
+		&561200 &561299 INCASE 4 "CrÃ©dit Agricole" ENDCASE
+		&581700 &581799 INCASE 4 "CrÃ©dit Mutuel" ENDCASE
 		DEFAULT -1 ""
 	    ENDSWITCH
 
@@ -376,7 +331,7 @@ REFRESH
 	    ENDSWITCH
 	    3500 4050 2500 250 LVTEXT
 
-	    ! Affichage des textes et de la flèche de la carte
+	    ! Affichage des textes et de la flÃ¨che de la carte
 	    2500 4375 2400 150 "EXPIRE A FIN >" RVTEXT
 	    2700 4500 MOVE 2900 4800 LINE 2900 4200 LINE 2700 4500 LINE
 
@@ -386,7 +341,7 @@ REFRESH
 		"Pas de retraits DAB/GAB" 500 5500 9000 500 CVPTEXT
 		DROP
 	    ELSE &20 = IF
-		    "Autorisation à chaque transaction" 500 5500 9000 500 CVPTEXT
+		    "Autorisation Ã  chaque transaction" 500 5500 9000 500 CVPTEXT
 		ENDIF
 	    ENDIF
 
@@ -404,12 +359,12 @@ REFRESH
     8200 3050 1000 1000 "PAVENUM.FMF" METAFILE
     &FFFFFF COLOR
 
-    32 0 2 PEEK 0 = NOT 19 0 1 PEEK OR IF		! Carte bloquée, saturée ou invalidée
+    32 0 2 PEEK 0 = NOT 19 0 1 PEEK OR IF		! Carte bloquÃ©e, saturÃ©e ou invalidÃ©e
 	0 25 &0000FF PEN
 	8100 3050 MOVE 9300 4050 LINE
 	8100 4050 MOVE 9300 3050 LINE
 	"CARTE" 8200 2700 1000 300 CVTEXT
-	19 0 1 PEEK IF "INVALIDÉE" ELSE 32 0 1 PEEK IF "SATURÉE" ELSE "BLOQUÉE" ENDIF ENDIF
+	19 0 1 PEEK IF "INVALIDÃ‰E" ELSE 32 0 1 PEEK IF "SATURÃ‰E" ELSE "BLOQUÃ‰E" ENDIF ENDIF
 	7800 4100 1800 300 CVTEXT
     ELSE
 	34 0 2 PEEK SWITCH
@@ -423,13 +378,13 @@ ENDREFRESH
 
 */
 
-/* Todo: intégrer les infos du programme ci-dessous:
+/* Todo: intÃ©grer les infos du programme ci-dessous:
  ***************************************************
 
-! Les zones affectées sont les suivantes
-! 	0 - Reponse au reset (initialisé par INIT.FOR)
-!	1 - Zone secrète
-!	2 - Zone d'accès
+! Les zones affectÃ©es sont les suivantes
+! 	0 - Reponse au reset (initialisÃ© par INIT.FOR)
+!	1 - Zone secrÃ¨te
+!	2 - Zone d'accÃ¨s
 !	3 - Zone confidentielle
 !	4 - Zone de transaction
 !	5 - Zone de lecture
@@ -444,10 +399,10 @@ ENDREFRESH
     "" LOADFILE
 ENDBUTTON
 
-! Test si le code d'accès peut être présenté
-! 	- Zone d'accès non encore lue
-!	- Carte fabriquée, personnalisée et non invalidée (bits 6 à 4 de MCH)
-!	- Carte non bloquée et non saturée (bits 7 & 6 de ME2)
+! Test si le code d'accÃ¨s peut Ãªtre prÃ©sentÃ©
+! 	- Zone d'accÃ¨s non encore lue
+!	- Carte fabriquÃ©e, personnalisÃ©e et non invalidÃ©e (bits 6 Ã  4 de MCH)
+!	- Carte non bloquÃ©e et non saturÃ©e (bits 7 & 6 de ME2)
 2 ZONE? NOT 17 0 3 PEEK &6 = AND 32 0 2 PEEK 0 = AND IF
     '\r' "&Code" BUTTON
 	"CP8.FOC" SETRETURNFILE
@@ -467,7 +422,7 @@ ENDBUTTON
     ENDBUTTON
 ENDIF
 
-! Si l'on a les droits d'effectuer la réponse au RESET
+! Si l'on a les droits d'effectuer la rÃ©ponse au RESET
 9 GETVAR 28 SET? IF
     'R' "Re&set" BUTTON
 	"CP8.FOC" SETRETURNFILE
@@ -528,25 +483,25 @@ REFRESH
     "ENCARTEUR" CALL CONCAT 
     2500 4300 5000 300 CVPTEXT	! Affichage du texte
 
-    ! affichage n° de série
+    ! affichage nÂ° de sÃ©rie
 
     0 COLOR
-    "Numéro de série : "
-    16 0 8 PEEK 5 SET? IF	! Si la carte est fabriquée,
-				! numéro de série
+    "NumÃ©ro de sÃ©rie : "
+    16 0 8 PEEK 5 SET? IF	! Si la carte est fabriquÃ©e,
+				! numÃ©ro de sÃ©rie
 	194 6 25 PEEK 0 STR CONCAT
     ENDIF
     2500 4600 5000 300 CVPTEXT	! Affichage du texte
 
     17 0 3 PEEK
     SWITCH
-	&6 CASE "Carte personnalisée non invalidée" ENDCASE
-	&0 CASE "Carte non fabriquée" ENDCASE
-	&1 CASE "Carte non fabriquée invalidée" ENDCASE
-	&2 CASE "Carte non personnalisée" ENDCASE
-	&3 CASE "Carte non personnalisée invalidée" ENDCASE
-	&7 CASE "Carte invalidée" ENDCASE
-	DEFAULT "Carte dans état anormal" 
+	&6 CASE "Carte personnalisÃ©e non invalidÃ©e" ENDCASE
+	&0 CASE "Carte non fabriquÃ©e" ENDCASE
+	&1 CASE "Carte non fabriquÃ©e invalidÃ©e" ENDCASE
+	&2 CASE "Carte non personnalisÃ©e" ENDCASE
+	&3 CASE "Carte non personnalisÃ©e invalidÃ©e" ENDCASE
+	&7 CASE "Carte invalidÃ©e" ENDCASE
+	DEFAULT "Carte dans Ã©tat anormal" 
     ENDSWITCH
     &FFFFFF COLOR
     500 5500 9000 500 CVPTEXT
@@ -562,18 +517,18 @@ REFRESH
 		DEFAULT "1 ESSAI"
 	    ENDSWITCH
 	    7800 4100 1800 300 CVTEXT
-	ELSE					! Carte bloquée, saturée ou invalidée
+	ELSE					! Carte bloquÃ©e, saturÃ©e ou invalidÃ©e
 	    0 25 &0000FF PEN
 	    8100 3050 MOVE 9300 4050 LINE
 	    8100 4050 MOVE 9300 3050 LINE
 	    "CARTE" 8200 2700 1000 300 CVTEXT
 	    19 0 1 PEEK IF
-		"INVALIDÉE"
+		"INVALIDÃ‰E"
 	    ELSE
 		32 0 1 PEEK IF
-		    "SATURÉE"
+		    "SATURÃ‰E"
 		ELSE
-		    "BLOQUÉE"
+		    "BLOQUÃ‰E"
 		ENDIF
 	    ENDIF
 	    7800 4100 1800 300 CVTEXT
@@ -583,10 +538,10 @@ ENDREFRESH
 
 */
 
-/* Todo: intégrer les infos du programme ci-dessous:
+/* Todo: intÃ©grer les infos du programme ci-dessous:
  ***************************************************
 
-! Ecran des informations stockées dans la zone transaction.
+! Ecran des informations stockÃ©es dans la zone transaction.
 ! Variables :	0 = nombres de transactions
 !		1 = nombre de transactions vides !
 !		2 = Exposant
@@ -599,17 +554,17 @@ ENDREFRESH
 	    2 GET 4 1 PEEK IF "@R" SWAPTEXT CONCAT ENDIF
 	    SWITCH
 		1 CASE "Achat au comptant" ENDCASE
-		2 CASE "Achat à crédit" ENDCASE
+		2 CASE "Achat Ã  crÃ©dit" ENDCASE
 		3 CASE "Retrait" ENDCASE
 		4 CASE "Virement" ENDCASE
-		DEFAULT "Opération inconnue"
+		DEFAULT "OpÃ©ration inconnue"
 	    ENDSWITCH
 	    CONCAT DUP 7 + 4 1 PEEK IF
 		" sous plafond de "
 	    ELSE
 		" hors plafond de "
 	    ENDIF
-	    ! Récupération montant
+	    ! RÃ©cupÃ©ration montant
 	    CONCAT DUP 13 + 4 19 PEEK DUP 20 > IF
 		DROP
 		"-----,--" CONCAT
@@ -639,21 +594,21 @@ ENDFUNCTION
 		0 GETVAR 1 + 0 SETVAR
 		DUPTEXT 2 GET 8 + 4 5 PEEK 4 STR
 		SWAPTEXT CONCAT
-		! Si la transaction n'est pas validée, on l'affiche en rouge
+		! Si la transaction n'est pas validÃ©e, on l'affiche en rouge
 		2 GET 4 1 PEEK IF "@R" SWAPTEXT CONCAT ENDIF
 		SWITCH
 		    1 CASE "Achat au comptant" ENDCASE
-		    2 CASE "Achat à crédit" ENDCASE
+		    2 CASE "Achat Ã  crÃ©dit" ENDCASE
 		    3 CASE "Retrait" ENDCASE
 		    4 CASE "Virement" ENDCASE
-		    DEFAULT "Opération inconnue"
+		    DEFAULT "OpÃ©ration inconnue"
 		ENDSWITCH
 		CONCAT DUP 7 + 4 1 PEEK IF
 		    " sous plafond de "
 		ELSE
 		    " hors plafond de "
 		ENDIF
-		! Récupération montant
+		! RÃ©cupÃ©ration montant
 		CONCAT DUP 13 + 4 19 PEEK 2 GETVAR * 100 DIV
 		DUP 100 DIV 5 STR CONCAT "," CONCAT
 		100 MOD -2 STR CONCAT
@@ -667,17 +622,17 @@ ENDFUNCTION
 	    "Zone prestataire "
 	    DUP 8 + 4 8 PEEK DUP SWITCH
 		33 CASE "FRANCE TELECOM" CONCAT ENDCASE
-		34 CASE "Vidéotexte-Jetons" CONCAT ENDCASE
+		34 CASE "VidÃ©otexte-Jetons" CONCAT ENDCASE
 		35 CASE "login" CONCAT ENDCASE
 		DEFAULT
-		    "réservée (" DUP 0 STR CONCAT ")" CONCAT CONCAT
+		    "rÃ©servÃ©e (" DUP 0 STR CONCAT ")" CONCAT CONCAT
 	    ENDSWITCH
-	    ! On vérifie le contrôle
+	    ! On vÃ©rifie le contrÃ´le
 	    2 GET 8 + 4 16 PEEK 3 GET 27 + 4 5 PEEK
 	    CHECKCCE IF " - CCE OK" CONCAT ELSE " - CCE NOK" CONCAT "@R" SWAPTEXT CONCAT ENDIF
-	    ! Si la zone n'est pas validée, on l'affiche en noir
+	    ! Si la zone n'est pas validÃ©e, on l'affiche en noir
 	    2 GET 4 1 PEEK IF "@0" SWAPTEXT CONCAT ENDIF
-	    DROP			! Laissons là le prestataire !
+	    DROP			! Laissons lÃ  le prestataire !
 	    4 0 8 4 GET 32 + 5 GET 16 + 4 8 PEEK 8 * 8 8 1 -4 -2 ZONEDUMP
 	    ""
 	    DUP 16 + 4 8 PEEK 8 * +
@@ -704,7 +659,7 @@ ENDFUNCTION
 		! On balaye la zone des plafonds
 		    DUP 4 + 4 3 PEEK SWITCH
 			1 CASE "  Achat au comptant : " ENDCASE
-			2 CASE "  Achat à crédit :    " ENDCASE
+			2 CASE "  Achat Ã  crÃ©dit :    " ENDCASE
 			3 CASE "  Retrait :           " ENDCASE
 			4 CASE "  Virement :          " ENDCASE
 			DEFAULT "@R  Inconnu :           " ENDCASE
@@ -712,7 +667,7 @@ ENDFUNCTION
 		    DUP 12 + 4 20 PEEK 2 GETVAR * 100 DIV
 		    DUP 100 DIV 6 STR CONCAT "," CONCAT 100 MOD -2 STR CONCAT
 		    DUP 8 + 4 4 PEEK SWITCH
-			0 CASE " sans périodicité" ENDCASE
+			0 CASE " sans pÃ©riodicitÃ©" ENDCASE
 			1 CASE " journalier" ENDCASE
 			2 CASE " tous les 2 jours" ENDCASE
 			3 CASE " tous les 3 jours" ENDCASE
@@ -736,29 +691,29 @@ ENDFUNCTION
 	    "Zone bancaire "
 	    DUP 8 + 4 8 PEEK DUP SWITCH
 		0 CASE "certificateur" CONCAT ENDCASE
-		1 CASE "clé de transaction" CONCAT ENDCASE
-		2 CASE "identité" CONCAT ENDCASE
+		1 CASE "clÃ© de transaction" CONCAT ENDCASE
+		2 CASE "identitÃ©" CONCAT ENDCASE
 		3 CASE "valeur d'authentification" CONCAT ENDCASE
 		4 CASE "plafond" CONCAT ENDCASE
-		5 CASE "1ère adresse" CONCAT ENDCASE
-		6 CASE "2ème adresse" CONCAT ENDCASE
+		5 CASE "1Ã¨re adresse" CONCAT ENDCASE
+		6 CASE "2Ã¨me adresse" CONCAT ENDCASE
 		7 CASE "pointage" CONCAT ENDCASE
 		8 CASE "RIB" CONCAT ENDCASE
-		9 CASE "date provisoire de validité" CONCAT ENDCASE
+		9 CASE "date provisoire de validitÃ©" CONCAT ENDCASE
 		17 CASE "personnalisateur" CONCAT ENDCASE 
 		20 CASE "adresse entreprise" CONCAT ENDCASE
-		21 CASE "identification commerçant" CONCAT ENDCASE
-		22 CASE "contrôle de flux" CONCAT ENDCASE
-		31 CASE "clé banque" CONCAT ENDCASE
-		32 CASE "clé d'ouverture" CONCAT ENDCASE
+		21 CASE "identification commerÃ§ant" CONCAT ENDCASE
+		22 CASE "contrÃ´le de flux" CONCAT ENDCASE
+		31 CASE "clÃ© banque" CONCAT ENDCASE
+		32 CASE "clÃ© d'ouverture" CONCAT ENDCASE
 		DEFAULT
 		    DUP DUP 10 >= SWAP 16 <= AND IF
-			"numéro de compte" CONCAT ENDCASE
+			"numÃ©ro de compte" CONCAT ENDCASE
 		    ELSE
-			"réservée (" DUP 0 STR CONCAT ")" CONCAT CONCAT
+			"rÃ©servÃ©e (" DUP 0 STR CONCAT ")" CONCAT CONCAT
 		    ENDIF
 	    ENDSWITCH
-	    ! Si la zone n'est pas validée, on l'affiche en noir
+	    ! Si la zone n'est pas validÃ©e, on l'affiche en noir
 	    2 GET 4 1 PEEK IF "@0" SWAPTEXT CONCAT ENDIF
 	    DUP
 	    SWITCH
@@ -785,10 +740,10 @@ ENDBUTTON
     "Zone de transactions bancaires" PRINT
 ENDBUTTON
 
-! Récupération de l'exposant pour le calcul des montants
+! RÃ©cupÃ©ration de l'exposant pour le calcul des montants
 0 5 LENZONE 1 - 32 FOR			! Balayage de la zone de lecture
 					! pour lire les informations
-    DUP 8 + 5 8 PEEK 2 = IF		! Récupération du prestataire
+    DUP 8 + 5 8 PEEK 2 = IF		! RÃ©cupÃ©ration du prestataire
 	DUP 208 + 5 4 PEEK SWITCH
 	    1 CASE 1 ENDCASE
 	    2 CASE 10 ENDCASE
@@ -799,7 +754,7 @@ ENDBUTTON
 	ENDSWITCH
 	2 SETVAR
     ENDIF
-    DUP 16 + 5 8 PEEK 8 * +	! Passage à la zone suivante
+    DUP 16 + 5 8 PEEK 8 * +	! Passage Ã  la zone suivante
 NEXT
 
 LIST
@@ -827,19 +782,19 @@ LIST
 	5 CASE
 	    DROPTEXT
 	    ""
-	    "Zone prestataire sans données" DUPTEXT MESSAGE
+	    "Zone prestataire sans donnÃ©es" DUPTEXT MESSAGE
 	    ""
 	ENDCASE
 	6 CASE				! Zone bancaire
 	    "BANCAIRE" CALL
 	ENDCASE
-	7 CASE				! Non  affectée
+	7 CASE				! Non  affectÃ©e
 	    DUP 4 1 PEEK IF
 		1 GETVAR 1 + 1 SETVAR
 	    ELSE
 		DROPTEXT
 		""
-		"Zone bancaire sans données" DUPTEXT MESSAGE
+		"Zone bancaire sans donnÃ©es" DUPTEXT MESSAGE
 		""
 	    ENDIF
 	ENDCASE
@@ -849,16 +804,16 @@ LIST
     ENDSWITCH
 NEXT
 
-DROPTEXT				! Libère la date en cours
+DROPTEXT				! LibÃ¨re la date en cours
 
 */
 
 /*
- * On définit les types nécessaires pour décrire le contenu d'une carte B0'
+ * On dÃ©finit les types nÃ©cessaires pour dÃ©crire le contenu d'une carte B0'
  */
 
 
-/* La Valeur d'Authentification représente la signature RSA d'informations
+/* La Valeur d'Authentification reprÃ©sente la signature RSA d'informations
    se trouvant dans la puce */
 struct ValeurAuthentification
 {
@@ -869,8 +824,8 @@ struct ValeurAuthentification
 typedef struct ValeurAuthentification ValeurAuthentification;
 
 
-/* L'identité du porteur contient toutes les informations bancaires
-   nécessaires à l'identification du compte */
+/* L'identitÃ© du porteur contient toutes les informations bancaires
+   nÃ©cessaires Ã  l'identification du compte */
 struct IdentitePorteur
 {
   int  CodeEnreg;
@@ -887,7 +842,7 @@ struct IdentitePorteur
 typedef struct IdentitePorteur IdentitePorteur;
 
 
-/* On définit un type de plafond */
+/* On dÃ©finit un type de plafond */
 struct TypePlafond
 {
   int Type,
@@ -926,7 +881,7 @@ struct InformationsPersonnalisateur
 typedef struct InformationsPersonnalisateur InformationsPersonnalisateur;
 
 
-/* Le prestataire 08 (Relevé d'Identité Bancaire) */
+/* Le prestataire 08 (RelevÃ© d'IdentitÃ© Bancaire) */
 struct ReleveIdentiteBancaire
 {
   char CodeBanque[5],
@@ -936,7 +891,7 @@ struct ReleveIdentiteBancaire
 typedef struct ReleveIdentiteBancaire ReleveIdentiteBancaire;
 
 
-/* Le prestataire 19 (Identité Certifiée C-SET) */
+/* Le prestataire 19 (IdentitÃ© CertifiÃ©e C-SET) */
 struct IdentiteCertifieeCSET
 {
   int cle,
@@ -956,27 +911,27 @@ typedef struct PrestataireInconnu PrestataireInconnu;
 
 /* Les types de prestataire connus:
 		00 Certificateur
-		01 Clé de transaction
-		02 Identité porteur
+		01 ClÃ© de transaction
+		02 IdentitÃ© porteur
 		03 Valeur d'authentification
-		03 Identité certifiée
+		03 IdentitÃ© certifiÃ©e
 		04 Plafond
-		05 1ère adresse
-		06 2ème adresse
+		05 1Ã¨re adresse
+		06 2Ã¨me adresse
 		07 Pointage
 		08 RIB
-		09 Date provisoire de validité
+		09 Date provisoire de validitÃ©
 		17
 		19
 		20 Adresse entreprise
-		21 Identification commerçant
-		22 Contrôle de flux (ou nouvelle Valeur d'authentification?)
-		31 Clé banque
-		32 Clé d'ouverture
+		21 Identification commerÃ§ant
+		22 ContrÃ´le de flux (ou nouvelle Valeur d'authentification?)
+		31 ClÃ© banque
+		32 ClÃ© d'ouverture
 */
 
 
-/* Les différentes zones prestataires sont décrites comme ça: */
+/* Les diffÃ©rentes zones prestataires sont dÃ©crites comme Ã§a: */
 struct Prestataire
 {
   int typeinfo,
@@ -995,8 +950,8 @@ struct Prestataire
 typedef struct Prestataire Prestataire;
 
 
-/* La Zone d'état, ou zone d'accès, a ses bits qui changent après chaque
-   présentation réussie ou non du code porteur */
+/* La Zone d'Ã©tat, ou zone d'accÃ¨s, a ses bits qui changent aprÃ¨s chaque
+   prÃ©sentation rÃ©ussie ou non du code porteur */
 struct ZoneEtat
 {
   int len;
@@ -1005,7 +960,7 @@ struct ZoneEtat
 typedef struct ZoneEtat ZoneEtat;
 
 
-/* La zone confidentielle ne contient en général pas grand chose */
+/* La zone confidentielle ne contient en gÃ©nÃ©ral pas grand chose */
 struct ZoneConfidentielle
 {
   int len;
@@ -1015,10 +970,10 @@ struct ZoneConfidentielle
 typedef struct ZoneConfidentielle ZoneConfidentielle;
 
 
-/* La Zone des Transaction est divisée en 2 parties:
-   - les dernières transactions, avec un recyclage automatique
+/* La Zone des Transaction est divisÃ©e en 2 parties:
+   - les derniÃ¨res transactions, avec un recyclage automatique
    - des zones "prestataires", qui donnent plusieurs renseignements (plafonds,
-      bloc certificateur, informations personnalisateur, relevé d'identité
+      bloc certificateur, informations personnalisateur, relevÃ© d'identitÃ©
       bancaire, ...)
 */
 struct ZoneTransaction
@@ -1030,7 +985,7 @@ struct ZoneTransaction
 typedef struct ZoneTransaction ZoneTransaction;
 
 
-/* La Zone de Lecture contient théoriquement une zone IdentitePorteur,
+/* La Zone de Lecture contient thÃ©oriquement une zone IdentitePorteur,
    et la Valeur d'Authentification */
 struct ZoneLecture
 {
@@ -1070,7 +1025,7 @@ typedef struct ZoneFabrication ZoneFabrication;
 
 
 /*
- * Variables nécessaires à la communication avec la carte
+ * Variables nÃ©cessaires Ã  la communication avec la carte
  */
 unsigned long context = 0;
 unsigned long handle = 0; /* Un handle de connexion avec la carte */
@@ -1086,7 +1041,7 @@ int PINgiven=0;
 
 
 /*
- * Les différentes zones de la carte
+ * Les diffÃ©rentes zones de la carte
  */
 ZoneEtat ZE;
 ZoneConfidentielle ZC;
@@ -1094,7 +1049,7 @@ ZoneTransaction ZT;
 ZoneLecture ZL;
 ZoneFabrication ZF;
 
-/* Le menu à afficher */
+/* Le menu Ã  afficher */
 struct MenuEntry
 {
   int displayed;
@@ -1108,7 +1063,7 @@ MenuEntry Menu[] =
   { 1, "Choisir un lecteur de carte" },
   { 0, "Ouvrir une session" },
   { 0, "Fermer la session" },
-  { 0, "Interprêter l'ATR" },
+  { 0, "InterprÃªter l'ATR" },
   { 0, "Saisir/valider le code porteur" },
   { 0, "Lire la carte bancaire" },
   { 0, "Afficher la Zone de Fabrication" },
@@ -1121,7 +1076,7 @@ MenuEntry Menu[] =
 
 
 /****************************************
- * Afficher les entrées du menu activées
+ * Afficher les entrÃ©es du menu activÃ©es
  ****************************************/
 void displaymenu(void)
 {
@@ -1165,8 +1120,8 @@ void displaymenu(void)
 
 
 /*******************************************************
- * Demander à l'utilisateur de faire un choix parmi les
- * entrées de menu activées
+ * Demander Ã  l'utilisateur de faire un choix parmi les
+ * entrÃ©es de menu activÃ©es
  *******************************************************/
 int getcommand(void)
 {
@@ -1309,8 +1264,8 @@ char *SCardError(unsigned long int rv)
 /****************************************************************************
  * void GetAndTestPIN(void)                                                 *
  *                                                                          *
- * Fonction : Demande un code PIN à l'utilisateur, le présente à la puce,   *
- *            et renvoie le résultat de la présentation (0=NOK, 1=OK)       *
+ * Fonction : Demande un code PIN Ã  l'utilisateur, le prÃ©sente Ã  la puce,   *
+ *            et renvoie le rÃ©sultat de la prÃ©sentation (0=NOK, 1=OK)       *
  ****************************************************************************/
 int GetAndTestPIN(void)
 {
@@ -1318,7 +1273,7 @@ int GetAndTestPIN(void)
   unsigned long int rv;
   char *PINCODE;
 
-  PINCODE=getpass("Entrez le code PIN désiré:");
+  PINCODE=getpass("Entrez le code PIN dÃ©sirÃ©:");
 
   hexpin=strtol(PINCODE, NULL, 16);
   hexpin<<=14;
@@ -1326,7 +1281,7 @@ int GetAndTestPIN(void)
 
   memset(PINCODE, 0, 128);
 
-  /* On présente le PIN code */
+  /* On prÃ©sente le PIN code */
   Command[0]=0xBC;
   Command[1]=0x20;
   Command[2]=0x00;
@@ -1346,7 +1301,7 @@ int GetAndTestPIN(void)
   if ((Response[0] != 0x90) && (Response[1] != 00))
     return 0;
 
-  /* Et on demande à la carte de le ratifier en lecture */
+  /* Et on demande Ã  la carte de le ratifier en lecture */
   Command[0]=0xBC;
   Command[1]=0x40;
   Command[2]=0x00;
@@ -1370,7 +1325,7 @@ int GetAndTestPIN(void)
  * void DecodePrestataireInconnu(unsigned char *buf, int len,               *
  *                               Prestataire *P)                            *
  *                                                                          *
- * Fonction : Décode un bloc prestataire inconnu                            *
+ * Fonction : DÃ©code un bloc prestataire inconnu                            *
  ****************************************************************************/
 void DecodePrestataireInconnu(unsigned char *buf, int len, Prestataire *P)
 {
@@ -1385,7 +1340,7 @@ void DecodePrestataireInconnu(unsigned char *buf, int len, Prestataire *P)
  * void DecodeIdentitePorteur(unsigned char *buf, int len,                  *
  *                            Prestataire *P)                               *
  *                                                                          *
- * Fonction : Décode un bloc prestataire 02 (Identité Porteur)              *
+ * Fonction : DÃ©code un bloc prestataire 02 (IdentitÃ© Porteur)              *
  ****************************************************************************/
 void DecodeIdentitePorteur(unsigned char *buf, int len, Prestataire *P)
 {
@@ -1424,7 +1379,7 @@ void DecodeIdentitePorteur(unsigned char *buf, int len, Prestataire *P)
  * void DecodeValeurAuthentification(unsigned char *buf, int len,           *
  *                                   Prestataire *P)                        *
  *                                                                          *
- * Fonction : Décode un bloc prestataire 03 (Valeur d'Authentification)     *
+ * Fonction : DÃ©code un bloc prestataire 03 (Valeur d'Authentification)     *
  ****************************************************************************/
 void DecodeValeurAuthentification(unsigned char *buf, int len, Prestataire *P)
 {
@@ -1459,7 +1414,7 @@ void DecodeValeurAuthentification(unsigned char *buf, int len, Prestataire *P)
  * void DecodeIdentiteCertifieeCSET(unsigned char *buf, int len,            *
  *                                  Prestataire *P)                         *
  *                                                                          *
- * Fonction : Décode un bloc prestataire 19 (Identité Certifiée C-SET)      *
+ * Fonction : DÃ©code un bloc prestataire 19 (IdentitÃ© CertifiÃ©e C-SET)      *
  ****************************************************************************/
 void DecodeIdentiteCertifieeCSET(unsigned char *buf, int len, Prestataire *P)
 {
@@ -1494,7 +1449,7 @@ void DecodeIdentiteCertifieeCSET(unsigned char *buf, int len, Prestataire *P)
  * void DecodeBlocCertificateur(unsigned char *buf, int len,                *
  *                              Prestataire *P)                             *
  *                                                                          *
- * Fonction : Décode un bloc prestataire 00 (Bloc Certificateur)            *
+ * Fonction : DÃ©code un bloc prestataire 00 (Bloc Certificateur)            *
  ****************************************************************************/
 void DecodeBlocCertificateur(unsigned char *buf, int len, Prestataire *P)
 {
@@ -1529,7 +1484,7 @@ void DecodeBlocCertificateur(unsigned char *buf, int len, Prestataire *P)
 /****************************************************************************
  * void DecodePlafonds(unsigned char *buf, int len, Prestataire *P)         *
  *                                                                          *
- * Fonction : Décode un bloc prestataire 04 (Plafonds)                      *
+ * Fonction : DÃ©code un bloc prestataire 04 (Plafonds)                      *
  ****************************************************************************/
 void DecodePlafonds(unsigned char *buf, int len, Prestataire *P)
 {
@@ -1550,8 +1505,8 @@ void DecodePlafonds(unsigned char *buf, int len, Prestataire *P)
 /****************************************************************************
  * void CherchePrestataires(unsigned char *buf, int len, Prestataire *P)    *
  *                                                                          *
- * Fonction : Recherche les différentes zones Prestataires présentes dans   *
- * le buffer pointé par buf, de longueur len.                               *
+ * Fonction : Recherche les diffÃ©rentes zones Prestataires prÃ©sentes dans   *
+ * le buffer pointÃ© par buf, de longueur len.                               *
  ****************************************************************************/
 void CherchePrestataires(unsigned char *buf, int len, Prestataire **P)
 {
@@ -1598,9 +1553,9 @@ void CherchePrestataires(unsigned char *buf, int len, Prestataire **P)
 /****************************************************************************
  * int ReadB0Memory(int start, int len, unsigned char *buf)                 *
  *                                                                          *
- * Fonction : Lit une zone mémoire de la carte B0', commençant au quartet   *
- * start, sur len octets de long, par tronçons de 128 octets maxi. Le       *
- * résultat est placé dans *buf                                             *
+ * Fonction : Lit une zone mÃ©moire de la carte B0', commenÃ§ant au quartet   *
+ * start, sur len octets de long, par tronÃ§ons de 128 octets maxi. Le       *
+ * rÃ©sultat est placÃ© dans *buf                                             *
  ****************************************************************************/
 int ReadB0Memory(int start, int len, unsigned char *buf)
 {
@@ -1617,7 +1572,7 @@ int ReadB0Memory(int start, int len, unsigned char *buf)
     ResponseLength=min(len, 0x80)+2;
     if ((rv=SCardTransmit(handle, SCARD_PCI_T0, Command, 5, NULL, Response, &ResponseLength)) != SCARD_S_SUCCESS)
     {
-      printf("Erreur lors de l'envoi de la commande de lecture mémoire (%s).\n", SCardError(rv));
+      printf("Erreur lors de l'envoi de la commande de lecture mÃ©moire (%s).\n", SCardError(rv));
       return 1;
     }
     memmove(buf+offset, Response, ResponseLength-2);
@@ -1633,12 +1588,12 @@ int ReadB0Memory(int start, int len, unsigned char *buf)
 /****************************************************************************
  * void LitPuce(void)                                                       *
  *                                                                          *
- * Fonction : Lit le contenu de la carte B0', et remplit en conséquence les *
- * variables globales représentant le contenu de la puce                    *
+ * Fonction : Lit le contenu de la carte B0', et remplit en consÃ©quence les *
+ * variables globales reprÃ©sentant le contenu de la puce                    *
  ****************************************************************************/
 void LitPuce(void)
 {
-  /* ToDo: revoir les décallages de bits, notamment pour le numéro de fabricant */
+  /* ToDo: revoir les dÃ©callages de bits, notamment pour le numÃ©ro de fabricant */
   fprintf(stderr, "Lecture de la Zone de Fabrication\n");
 
   /* On doit d'abord lire la Zone de Fabrication */
@@ -1649,7 +1604,7 @@ void LitPuce(void)
     return;
 
   /* Maintenant, on a en Response le contenu de la zone de fab. */
-  /* On va remplir notre structure ZF en conséquence */
+  /* On va remplir notre structure ZF en consÃ©quence */
   if (ZF.Texas)
     ZF.ADP=Response[1];
   else
@@ -1670,9 +1625,9 @@ void LitPuce(void)
   ZF.Indice=Response[29];
   Menu[7].displayed=1;
 
-  /* Si l'utilisateur a présenté le code PIN, on peut donc lire la Zone
+  /* Si l'utilisateur a prÃ©sentÃ© le code PIN, on peut donc lire la Zone
      d'Etat */
-  /* ToDo: vérifier aussi les options pour connaître les conditions d'accès à cette zone */
+  /* ToDo: vÃ©rifier aussi les options pour connaÃ®tre les conditions d'accÃ¨s Ã  cette zone */
   if (PINgiven)
   {
     int len=(ZF.ADC*8-ZF.ADM*8)/2,
@@ -1684,7 +1639,7 @@ void LitPuce(void)
     ZE.buf=malloc(len);
     if (!ZE.buf)
     {
-      fprintf(stderr, "Impossible d'allouer %d octets de mémoire pour stocker la Zone d'Etat.\n",
+      fprintf(stderr, "Impossible d'allouer %d octets de mÃ©moire pour stocker la Zone d'Etat.\n",
 	  len);
       exit(1);
     }
@@ -1696,9 +1651,9 @@ void LitPuce(void)
     Menu[9].displayed=1;
   }
 
-  /* Si l'utilisateur a présenté le code PIN, on peut donc lire la Zone
+  /* Si l'utilisateur a prÃ©sentÃ© le code PIN, on peut donc lire la Zone
      Confidentielle */
-  /* ToDo: vérifier aussi les options pour connaître les conditions d'accès à cette zone */
+  /* ToDo: vÃ©rifier aussi les options pour connaÃ®tre les conditions d'accÃ¨s Ã  cette zone */
   if (PINgiven)
   {
     int len=(ZF.ADT*8-ZF.ADC*8)/2,
@@ -1710,7 +1665,7 @@ void LitPuce(void)
     ZC.buf=malloc(len);
     if (!ZC.buf && len)
     {
-      fprintf(stderr, "Impossible d'allouer %d octets de mémoire pour stocker la Zone Confidentielle.\n",
+      fprintf(stderr, "Impossible d'allouer %d octets de mÃ©moire pour stocker la Zone Confidentielle.\n",
 	  len);
       exit(1);
     }
@@ -1720,15 +1675,15 @@ void LitPuce(void)
     if (ReadB0Memory(start, len, ZC.buf))
       return;
 
-    /* Il faut maintenant parser le machin, pour détecter les différents
+    /* Il faut maintenant parser le machin, pour dÃ©tecter les diffÃ©rents
        blocs prestataires */
     CherchePrestataires(ZC.buf, ZC.len, &(ZC.PremierPrestataire));
     Menu[10].displayed=1;
   }
 
-  /* Si l'utilisateur a présenté le code PIN, on peut donc lire la Zone
+  /* Si l'utilisateur a prÃ©sentÃ© le code PIN, on peut donc lire la Zone
      des Transactions */
-  /* ToDo: vérifier aussi les options pour connaître les conditions d'accès à cette zone */
+  /* ToDo: vÃ©rifier aussi les options pour connaÃ®tre les conditions d'accÃ¨s Ã  cette zone */
   if (PINgiven)
   {
     int len=(ZF.ADL*8-ZF.ADT*8)/2,
@@ -1740,7 +1695,7 @@ void LitPuce(void)
     ZT.buf=malloc(len);
     if (!ZT.buf)
     {
-      fprintf(stderr, "Impossible d'allouer %d octets de mémoire pour stocker la Zone des Transactions.\n",
+      fprintf(stderr, "Impossible d'allouer %d octets de mÃ©moire pour stocker la Zone des Transactions.\n",
 	  len);
       exit(1);
     }
@@ -1750,13 +1705,13 @@ void LitPuce(void)
     if (ReadB0Memory(start, len, ZT.buf))
       return;
 
-    /* Il faut maintenant parser le machin, pour détecter les différents
+    /* Il faut maintenant parser le machin, pour dÃ©tecter les diffÃ©rents
        blocs prestataires */
     CherchePrestataires(ZT.buf, ZT.len, &(ZT.PremierPrestataire));
     Menu[11].displayed=1;
   }
 
-  /* Pas besoin de présentation du code porteur pour lire la Zone de
+  /* Pas besoin de prÃ©sentation du code porteur pour lire la Zone de
      Lecture */
   {
     int len=(0x9C0-ZF.ADL*8)/2,
@@ -1768,7 +1723,7 @@ void LitPuce(void)
     ZL.buf=malloc(len);
     if (!ZL.buf)
     {
-      fprintf(stderr, "Impossible d'allouer %d octets de mémoire pour stocker la Zone de Lecture.\n",
+      fprintf(stderr, "Impossible d'allouer %d octets de mÃ©moire pour stocker la Zone de Lecture.\n",
 	  len);
       exit(1);
     }
@@ -1778,7 +1733,7 @@ void LitPuce(void)
     if (ReadB0Memory(start, len, ZL.buf))
       return;
 
-    /* Il faut maintenant parser le machin, pour détecter les différents
+    /* Il faut maintenant parser le machin, pour dÃ©tecter les diffÃ©rents
        blocs prestataire */
     CherchePrestataires(ZL.buf, ZL.len, &(ZL.PremierPrestataire));
     Menu[8].displayed=1;
@@ -1792,7 +1747,7 @@ void LitPuce(void)
  * void DumpData(unsigned char *buf, int len, char *prefix)                 *
  *                                                                          *
  * Fonction : Fait simplement un dump hexa de *buf, sur len octets de long, *
- * chaque nouvelle ligne est préfixée par *prefix                           *
+ * chaque nouvelle ligne est prÃ©fixÃ©e par *prefix                           *
  ****************************************************************************/
 void DumpData(unsigned char *buf, int len, char *prefix)
 {
@@ -1830,30 +1785,30 @@ void AffichePrestataireInconnu(PrestataireInconnu *x)
   printf("\n    Bloc prestataire inconnu\n");
   printf("    ------------------------\n");
   DumpData(x->buf, x->len, "    ");
-  printf("    Numéro de prestataire: %d ", x->buf[1]);
+  printf("    NumÃ©ro de prestataire: %d ", x->buf[1]);
   switch (x->buf[1])
   {
     case 0:  printf("(Certificateur)\n"); break;
-    case 1:  printf("(Clé de transaction)\n"); break;
-    case 2:  printf("(Identité porteur)\n"); break;
+    case 1:  printf("(ClÃ© de transaction)\n"); break;
+    case 2:  printf("(IdentitÃ© porteur)\n"); break;
     case 3:  printf("(Valeur d'authentification)\n"); break;
     case 4:  printf("(Plafond)\n"); break;
-    case 5:  printf("(1ère adresse)\n"); break;
-    case 6:  printf("(2ème adresse)\n"); break;
+    case 5:  printf("(1Ã¨re adresse)\n"); break;
+    case 6:  printf("(2Ã¨me adresse)\n"); break;
     case 7:  printf("(Pointage)\n"); break;
     case 8:  printf("(RIB)\n"); break;
-    case 9:  printf("(Date provisoire de validité)\n"); break;
+    case 9:  printf("(Date provisoire de validitÃ©)\n"); break;
     case 17: printf("(Personnalisateur)\n"); break;
-    case 19: printf("(Identité certifiée C-SET)\n"); break;
+    case 19: printf("(IdentitÃ© certifiÃ©e C-SET)\n"); break;
     case 20: printf("(Adresse entreprise)\n"); break;
-    case 21: printf("(Identification commerçant)\n"); break;
-    case 22: printf("(Contrôle de flux (ou nouvelle Valeur d'authentification?))\n"); break;
-    case 31: printf("(Clé banque)\n"); break;
-    case 32: printf("(Clé d'ouverture)\n"); break;
+    case 21: printf("(Identification commerÃ§ant)\n"); break;
+    case 22: printf("(ContrÃ´le de flux (ou nouvelle Valeur d'authentification?))\n"); break;
+    case 31: printf("(ClÃ© banque)\n"); break;
+    case 32: printf("(ClÃ© d'ouverture)\n"); break;
     default: printf("(Inconnu)\n"); break;
   }
   printf("    Longueur du bloc prestataire: %d\n", x->buf[2]);
-  printf("    Bits système: %s, %s\n", (x->buf[0]&0x40)?"informations monétaires":"informations non monétaires",
+  printf("    Bits systÃ¨me: %s, %s\n", (x->buf[0]&0x40)?"informations monÃ©taires":"informations non monÃ©taires",
       (x->buf[0]&0x20)?"informations bancaires":"informations prestataires");
   printf("    Type: %s\n", (x->buf[0]&0x08)?"autres prestataires":"prestataire 04 (plafonds)");
 }
@@ -1862,8 +1817,8 @@ void AffichePrestataireInconnu(PrestataireInconnu *x)
 /****************************************************************************
  * void AfficheIdentitePorteur(IdentitePorteur *x)                          *
  *                                                                          *
- * Fonction : Affiche toutes les infos trouvées dans le bloc Identité       *
- * porteur pointé par *x                                                    *
+ * Fonction : Affiche toutes les infos trouvÃ©es dans le bloc IdentitÃ©       *
+ * porteur pointÃ© par *x                                                    *
  ****************************************************************************/
 void AfficheIdentitePorteur(IdentitePorteur *x)
 {
@@ -1877,18 +1832,18 @@ void AfficheIdentitePorteur(IdentitePorteur *x)
     char *nombanque;
   } Cartes[] = 
   {
-    453300, 453399, 1, "Crédit Agricole",
-    455660, 455674, 0, "Crédit du Nord",
-    455675, 455684, 0, "Crédit du Nord",
-    455685, 455694, 3, "Crédit du Nord",
-    455695, 455699, 0, "Crédit Lyonnais",
-    455800, 455899, 3, "Crédit Agricole",
+    453300, 453399, 1, "CrÃ©dit Agricole",
+    455660, 455674, 0, "CrÃ©dit du Nord",
+    455675, 455684, 0, "CrÃ©dit du Nord",
+    455685, 455694, 3, "CrÃ©dit du Nord",
+    455695, 455699, 0, "CrÃ©dit Lyonnais",
+    455800, 455899, 3, "CrÃ©dit Agricole",
     456100, 456139, 3, "C. C. F.",
-    456140, 456189, 3, "Société Générale",
-    456190, 456199, 3, "Crédit du Nord",
-    456200, 456269, 3, "Crédit Lyonnais",
-    456270, 456285, 3, "Crédit du Nord",
-    456286, 456299, 3, "Crédit du Nord",
+    456140, 456189, 3, "SociÃ©tÃ© GÃ©nÃ©rale",
+    456190, 456199, 3, "CrÃ©dit du Nord",
+    456200, 456269, 3, "CrÃ©dit Lyonnais",
+    456270, 456285, 3, "CrÃ©dit du Nord",
+    456286, 456299, 3, "CrÃ©dit du Nord",
     497000, 497009, -1, "RESERVE GIE CB",
     497010, 497010, -1, "Carte de test",
     497011, 497013, 3, "LA POSTE",
@@ -1898,29 +1853,29 @@ void AfficheIdentitePorteur(IdentitePorteur *x)
     497050, 497068, 1, "LA POSTE",
     497099, 497099, 3, "LA POSTE",
     497100, 497177, 0, "C. C. F.",
-    497178, 497199, 0, "Crédit du Nord",
-    497200, 497203, 0, "Crédit Lyonnais",
-    497204, 497206, 3, "Crédit Lyonnais",
-    497207, 497299, 0, "Crédit Lyonnais",
-    497300, 497309, 0, "Société Générale",
-    497320, 497399, 0, "Société Générale",
+    497178, 497199, 0, "CrÃ©dit du Nord",
+    497200, 497203, 0, "CrÃ©dit Lyonnais",
+    497204, 497206, 3, "CrÃ©dit Lyonnais",
+    497207, 497299, 0, "CrÃ©dit Lyonnais",
+    497300, 497309, 0, "SociÃ©tÃ© GÃ©nÃ©rale",
+    497320, 497399, 0, "SociÃ©tÃ© GÃ©nÃ©rale",
     497400, 497489, 0, "BNP",
     497490, 497490, 3, "BNP",
     497491, 497499, 0, "BNP",
     497500, 497599, 0, "Banque Populaire",
     497600, 497669, 0, "C. I. C.",
-    497670, 497670, 3, "Crédit du Nord",
-    497671, 497699, 0, "Crédit du Nord",
-    497700, 497799, 1, "Crédit Mutuel",
-    497800, 497849, 0, "Caisse d'épargne",
-    497850, 497899, 3, "Caisse d'épargne",
+    497670, 497670, 3, "CrÃ©dit du Nord",
+    497671, 497699, 0, "CrÃ©dit du Nord",
+    497700, 497799, 1, "CrÃ©dit Mutuel",
+    497800, 497849, 0, "Caisse d'Ã©pargne",
+    497850, 497899, 3, "Caisse d'Ã©pargne",
     497900, 497939, 3, "BNP",
     497940, 497999, 0, "C. I. C.",
-    513100, 513199, 2, "Crédit Agricole",
-    513200, 513299, 2, "Crédit Mutuel",
+    513100, 513199, 2, "CrÃ©dit Agricole",
+    513200, 513299, 2, "CrÃ©dit Mutuel",
     529500, 529599, -1, "RESERVE GIE CB",
-    561200, 561299, 4, "Crédit Agricole",
-    581700, 581799, 4, "Crédit Mutuel",
+    561200, 561299, 4, "CrÃ©dit Agricole",
+    581700, 581799, 4, "CrÃ©dit Mutuel",
     0,      0,      0, NULL
   };
 
@@ -1980,64 +1935,64 @@ void AfficheIdentitePorteur(IdentitePorteur *x)
     case 2 : printf("Internationale - "); break;
     case 5 : printf("Nationale - "); break;
     case 6 : printf("Nationale - "); break;
-    case 7 : printf("Privée - "); break;
+    case 7 : printf("PrivÃ©e - "); break;
     case 9 : printf("Test - "); break;
     default: printf("Inconnu - "); break;
   }
   switch (x->CodeUsage % 0x100)
   {
-    case 0x00: printf("code exigé)\n"); break;
+    case 0x00: printf("code exigÃ©)\n"); break;
     case 0x01: printf("tous retraits)\n"); break;
     case 0x02: printf("paiement seul)\n"); break;
     case 0x03: printf("retrait seul/code)\n"); break;
     case 0x04: printf("retrait seul)\n"); break;
     case 0x05: printf("paiement seul/code)\n"); break;
-    case 0x10: printf("code exigé)\n"); break;
+    case 0x10: printf("code exigÃ©)\n"); break;
     case 0x11: printf("tous retraits)\n"); break;
     case 0x12: printf("paiement seul)\n"); break;
     case 0x13: printf("retrait seul/code)\n"); break;
     case 0x14: printf("retrait seul)\n"); break;
     case 0x15: printf("paiement seul/code)\n"); break;
-    case 0x20: printf("code exigé/autorisation)\n"); break;
+    case 0x20: printf("code exigÃ©/autorisation)\n"); break;
     case 0x21: printf("autorisation)\n"); break;
     case 0x22: printf("paiement seul/autorisation)\n"); break;
     case 0x23: printf("retrait seul/autorisation/code)\n"); break;
     case 0x24: printf("retrait seul/autorisation)\n"); break;
     case 0x25: printf("paiement seul/autorisation/code)\n"); break;
-    case 0x30: printf("code exigé)\n"); break;
+    case 0x30: printf("code exigÃ©)\n"); break;
     case 0x31: printf("tous retraits)\n"); break;
     case 0x32: printf("paiement seul)\n"); break;
     case 0x33: printf("retrait seul/code)\n"); break;
     case 0x34: printf("retrait seul)\n"); break;
     case 0x35: printf("paiement seul/code)\n"); break;
-    case 0x40: printf("code/autorisation sauf procédure dégradée)\n"); break;
-    case 0x41: printf("autorisation sauf procédure dégradée)\n"); break;
-    case 0x42: printf("paiement seul/autorisation sauf procédure dégradée)\n"); break;
-    case 0x43: printf("retrait/code/autorisation sauf procédure dégradée)\n"); break;
-    case 0x44: printf("retrait/autorisation sauf procédure dégradée)\n"); break;
-    case 0x45: printf("paiement/code/autorisation sauf procédure dégradée)\n"); break;
+    case 0x40: printf("code/autorisation sauf procÃ©dure dÃ©gradÃ©e)\n"); break;
+    case 0x41: printf("autorisation sauf procÃ©dure dÃ©gradÃ©e)\n"); break;
+    case 0x42: printf("paiement seul/autorisation sauf procÃ©dure dÃ©gradÃ©e)\n"); break;
+    case 0x43: printf("retrait/code/autorisation sauf procÃ©dure dÃ©gradÃ©e)\n"); break;
+    case 0x44: printf("retrait/autorisation sauf procÃ©dure dÃ©gradÃ©e)\n"); break;
+    case 0x45: printf("paiement/code/autorisation sauf procÃ©dure dÃ©gradÃ©e)\n"); break;
     default  : printf("code service inconnu)\n"); break;
   }
-  printf("    Date de début de validité = %02x/%02x\n",
+  printf("    Date de dÃ©but de validitÃ© = %02x/%02x\n",
       x->DateDebutValidite[1],
       x->DateDebutValidite[0]);
   printf("    Code langue = %03x\n", x->CodeLangue);
-  printf("    Date de fin de validité = %02x/%02x\n",
+  printf("    Date de fin de validitÃ© = %02x/%02x\n",
       x->DateFinValidite[1],
       x->DateFinValidite[0]);
   printf("    Code devise = %03x\n", x->CodeDevise);
   printf("    Exposant = %01x ", x->Exposant);
   switch (x->Exposant)
   {
-    case 1:  printf("(centièmes/100)\n"); break;
-    case 2:  printf("(centièmes/10)\n"); break;
-    case 3:  printf("(centièmes)\n"); break;
-    case 4:  printf("(unités/10)\n"); break;
-    case 5:  printf("(unités)\n"); break;
-    case 6:  printf("(unités*10)\n"); break;
+    case 1:  printf("(centiÃ¨mes/100)\n"); break;
+    case 2:  printf("(centiÃ¨mes/10)\n"); break;
+    case 3:  printf("(centiÃ¨mes)\n"); break;
+    case 4:  printf("(unitÃ©s/10)\n"); break;
+    case 5:  printf("(unitÃ©s)\n"); break;
+    case 6:  printf("(unitÃ©s*10)\n"); break;
     default: printf("(inconnu)\n"); break;
   }
-  printf("    BIN de référence = %06X\n", x->BinReference);
+  printf("    BIN de rÃ©fÃ©rence = %06X\n", x->BinReference);
   printf("    Nom du porteur = ");
   for(i=0; i < 52; i+=2)
     printf("%c", (x->NomPorteur[i]<<4)+x->NomPorteur[i+1]);
@@ -2048,11 +2003,11 @@ void AfficheIdentitePorteur(IdentitePorteur *x)
 /****************************************************************************
  * void AfficheValeurAuthentification(ValeurAuthentification *x)            *
  *                                                                          *
- * Fonction : Affiche un bloc VA: numéro de clé, signature RSA              *
+ * Fonction : Affiche un bloc VA: numÃ©ro de clÃ©, signature RSA              *
  ****************************************************************************/
 void AfficheValeurAuthentification(ValeurAuthentification *x)
 {
-/* Todo: vérifier la signature ave les clés publiques:
+/* Todo: vÃ©rifier la signature ave les clÃ©s publiques:
 0:2^320+0xc18407505f55c246af7ab247cbe332f0efc2d1c9b2b6bfa697e4d5766891
 1:2^320+0x90b8aaa8de358e7782e81c7723653be644f7dcc6f816daf46e532b91e84f
 2:2^320+0xd3ab7e06bc577b64101f69b96078a83f6703f49456a1025f65e9000b791f
@@ -2088,17 +2043,17 @@ void AfficheValeurAuthentification(ValeurAuthentification *x)
 
   printf("\n    Bloc prestataire 03 (Valeur d'Authentification)\n");
   printf("    -----------------------------------------------\n");
-  printf("    Clé = %d ", x->cle);
+  printf("    ClÃ© = %d ", x->cle);
   switch (x->cle)
   {
     case 0:
-      printf("(clé de test)\n");
+      printf("(clÃ© de test)\n");
       break;
     case 1:
-      printf("(clé réelle nø 1)\n");
+      printf("(clÃ© rÃ©elle nÃ¸ 1)\n");
       break;
     case 2:  
-      printf("(clé réelle nø 2)\n");
+      printf("(clÃ© rÃ©elle nÃ¸ 2)\n");
       break;
     default: printf("(inconnue)\n"); break;
   }
@@ -2117,7 +2072,7 @@ void AfficheValeurAuthentification(ValeurAuthentification *x)
     BN_zero(e);
     BN_add_word(e, 3);
 
-    /* Le module de la clé */
+    /* Le module de la clÃ© */
     m=BN_new();
     BN_bin2bn(module[x->cle], 41, m);
 
@@ -2125,13 +2080,13 @@ void AfficheValeurAuthentification(ValeurAuthentification *x)
     s=BN_new();
     BN_bin2bn(x->VA, x->siglen/8, s);
 
-    /* On réalise l'exponentiation RSA */
+    /* On rÃ©alise l'exponentiation RSA */
     r=BN_new();
     BN_mod_exp(r, s, e, m, ctx);
 
-    /* On affiche la donnée signée par cette clé */
-    printf("    Taille des données signées = %d bits\n", BN_num_bits(r));
-    printf("    Données signées:\n");
+    /* On affiche la donnÃ©e signÃ©e par cette clÃ© */
+    printf("    Taille des donnÃ©es signÃ©es = %d bits\n", BN_num_bits(r));
+    printf("    DonnÃ©es signÃ©es:\n");
     message=malloc(BN_num_bytes(r));
     BN_bn2bin(r, message);
     DumpData(message, BN_num_bytes(r), "        ");
@@ -2151,17 +2106,17 @@ void AfficheValeurAuthentification(ValeurAuthentification *x)
 /****************************************************************************
  * void AfficheNouvelleValeurAuthentification(ValeurAuthentification *x)    *
  *                                                                          *
- * Fonction : Affiche un bloc VA: numéro de clé, signature RSA              *
- *            Normalement, ce prestataire est appelé Contrôle de flux, et   *
- *            est défini depuis le 1er mai 1997 au moins                    *
+ * Fonction : Affiche un bloc VA: numÃ©ro de clÃ©, signature RSA              *
+ *            Normalement, ce prestataire est appelÃ© ContrÃ´le de flux, et   *
+ *            est dÃ©fini depuis le 1er mai 1997 au moins                    *
  ****************************************************************************/
 void AfficheNouvelleValeurAuthentification(ValeurAuthentification *x)
 {
-  printf("\n    Bloc prestataire 22 (Contrôle de flux)\n");
+  printf("\n    Bloc prestataire 22 (ContrÃ´le de flux)\n");
   printf("    --------------------------------------\n");
-  printf("    Ce bloc ressemble fortement à une Valeur d'Authentification, je vais donc\n");
+  printf("    Ce bloc ressemble fortement Ã  une Valeur d'Authentification, je vais donc\n");
   printf("    l'afficher comme tel.\n");
-  printf("    Clé = %d\n", x->cle);
+  printf("    ClÃ© = %d\n", x->cle);
   printf("    Taille de la signature = %d bits\n", x->siglen);
   printf("    Signature:\n");
   DumpData(x->VA, x->siglen/8, "        ");
@@ -2171,24 +2126,24 @@ void AfficheNouvelleValeurAuthentification(ValeurAuthentification *x)
 /****************************************************************************
  * void AfficheIdentiteCertifieeCSET(IdentiteCertifieeCSET *x)              *
  *                                                                          *
- * Fonction : Affiche un bloc IdentiteCertifieeCSET: numéro de clé,         *
+ * Fonction : Affiche un bloc IdentiteCertifieeCSET: numÃ©ro de clÃ©,         *
  *            signature RSA                                                 *
  ****************************************************************************/
 void AfficheIdentiteCertifieeCSET(IdentiteCertifieeCSET *x)
 {
-  printf("\n    Bloc prestataire 19 (Identite Certifiée C-SET)\n");
+  printf("\n    Bloc prestataire 19 (Identite CertifiÃ©e C-SET)\n");
   printf("    ----------------------------------------------\n");
-  printf("    Clé = %d ", x->cle);
+  printf("    ClÃ© = %d ", x->cle);
   switch (x->cle)
   {
-    case 0:  printf("(clé de test)\n"); break;
+    case 0:  printf("(clÃ© de test)\n"); break;
     case 1:
     case 2:
     case 3:
     case 4:
     case 5:
     case 6:
-    case 7:  printf("(clé réelle nø %d)\n"); break;
+    case 7:  printf("(clÃ© rÃ©elle nÃ¸ %d)\n"); break;
     default: printf("(inconnue)\n"); break;
   }
 
@@ -2217,7 +2172,7 @@ void AffichePlafonds(DonneesPlafond *x)
   while (P && P->numprestataire != 02)
     P=P->Next;
   if (!P)
-    printf("    Exposant monétaire inconnu\n");
+    printf("    Exposant monÃ©taire inconnu\n");
   else
   {
     switch (P->Identite->Exposant)
@@ -2228,7 +2183,7 @@ void AffichePlafonds(DonneesPlafond *x)
       case 4:  exposant=0.1; break;
       case 5:  exposant=1; break;
       case 6:  exposant=10; break;
-      default: exposant=1; printf("    Exposant monétaire inconnu\n"); break;
+      default: exposant=1; printf("    Exposant monÃ©taire inconnu\n"); break;
     }
     if (P->Identite->CodeDevise == 0x250)
     {
@@ -2242,14 +2197,14 @@ void AffichePlafonds(DonneesPlafond *x)
     switch (x->Plafond[i].Type)
     {
       case 1:  printf("    Achats au comptant, "); break;
-      case 2:  printf("    Achats à crédit, "); break;
+      case 2:  printf("    Achats Ã  crÃ©dit, "); break;
       case 3:  printf("    Retraits, "); break;
       case 4:  printf("    Virements, "); break;
       default: printf("    Type de plafond inconnu, "); break;
     }
     switch(x->Plafond[i].Periode)
     {
-      case 0:  printf("sans périodicité, "); break;
+      case 0:  printf("sans pÃ©riodicitÃ©, "); break;
       case 1:  printf("journalier, "); break;
       case 2:
       case 3:
@@ -2261,9 +2216,9 @@ void AffichePlafonds(DonneesPlafond *x)
       case 9:
       case 10: printf("tous les %d jours, ", x->Plafond[i].Periode); break;
       case 15: printf("mensuel, "); break;
-      default: printf("périodicité inconnue, "); break;
+      default: printf("pÃ©riodicitÃ© inconnue, "); break;
     }
-    printf("%10.2f %s\n", (double)(x->Plafond[i].Montant)*exposant, conveuros?"euros":"unités");
+    printf("%10.2f %s\n", (double)(x->Plafond[i].Montant)*exposant, conveuros?"euros":"unitÃ©s");
   }
 }
 
@@ -2292,7 +2247,7 @@ void AfficheBlocCertificateur(BlocCertificateur *x)
 /****************************************************************************
  * void AfficheTransactions(unsigned char *buf, unsigned long int len)      *
  *                                                                          *
- * Fonction : Décode et affiche les transactions                            *
+ * Fonction : DÃ©code et affiche les transactions                            *
  ****************************************************************************/
 void AfficheTransactions(unsigned char *buf, int len)
 {
@@ -2314,7 +2269,7 @@ void AfficheTransactions(unsigned char *buf, int len)
   while (P && P->numprestataire != 02)
     P=P->Next;
   if (!P)
-    printf("    Exposant monétaire inconnu\n");
+    printf("    Exposant monÃ©taire inconnu\n");
   else
   {
     switch (P->Identite->Exposant)
@@ -2325,7 +2280,7 @@ void AfficheTransactions(unsigned char *buf, int len)
       case 4:  exposant=0.1; break;
       case 5:  exposant=1; break;
       case 6:  exposant=10; break;
-      default: exposant=1; printf("    Exposant monétaire inconnu\n"); break;
+      default: exposant=1; printf("    Exposant monÃ©taire inconnu\n"); break;
     }
     if (P->Identite->CodeDevise == 0x250)
     {
@@ -2354,7 +2309,7 @@ void AfficheTransactions(unsigned char *buf, int len)
 	  printf("     achat au comptant");
 	  break;
 	case 2:
-	  printf("     achat à crédit");
+	  printf("     achat Ã  crÃ©dit");
 	  break;
 	case 3:
 	  printf("     retrait");
@@ -2363,7 +2318,7 @@ void AfficheTransactions(unsigned char *buf, int len)
 	  printf("     virement");
 	  break;
 	default:
-	  printf("     opération inconnue");
+	  printf("     opÃ©ration inconnue");
 	  break;
       }
       printf(", le %d du mois", jour);
@@ -2371,7 +2326,7 @@ void AfficheTransactions(unsigned char *buf, int len)
 	printf(", sous plafond");
       else
 	printf(", hors plafond");
-      printf(", montant: %10.2f %s", (double)(montant)*exposant, conveuros?"euros":"unités");
+      printf(", montant: %10.2f %s", (double)(montant)*exposant, conveuros?"euros":"unitÃ©s");
 
       printf("\n");
     }
@@ -2383,7 +2338,7 @@ void AfficheTransactions(unsigned char *buf, int len)
 /****************************************************************************
  * void AffichePrestataires(Prestataire *P)                                 *
  *                                                                          *
- * Fonction : Affiche toute la chaîne des prestataires, à partir de *P      *
+ * Fonction : Affiche toute la chaÃ®ne des prestataires, Ã  partir de *P      *
  ****************************************************************************/
 void AffichePrestataires(Prestataire *P)
 {
@@ -2415,7 +2370,7 @@ void AfficheZF(void)
    * Zone de Fabrication
    **********************/
 
-  printf("\nþ Contenu de la Zone de Fabrication þ\n");
+  printf("\n= Contenu de la Zone de Fabrication =\n");
   printf("=====================================\n");
   if (ZF.Texas)
   {
@@ -2429,20 +2384,20 @@ void AfficheZF(void)
   if (ZF.Options & 0x0400)
     printf("    Ecriture ZC libre\n");
   else
-    printf("    Ecriture ZC protégée\n");
+    printf("    Ecriture ZC protÃ©gÃ©e\n");
   if (ZF.Options & 0x0200)
     printf("    Lecture ZC libre\n");
   else
-    printf("    Lecture ZC protégée\n");
+    printf("    Lecture ZC protÃ©gÃ©e\n");
   if (ZF.Options & 0x0008)
-    printf("    ZC non effaçable\n");
+    printf("    ZC non effaÃ§able\n");
   else
   {
-    printf("    ZC effaçable\n");
+    printf("    ZC effaÃ§able\n");
     switch ((ZF.Options & 0x0180)>>12)
     {
-      case 0: printf("    Effacement ZC sous clé banque CB\n"); break;
-      case 1: printf("    Effacement ZC sous clé d'ouverture CO\n"); break;
+      case 0: printf("    Effacement ZC sous clÃ© banque CB\n"); break;
+      case 1: printf("    Effacement ZC sous clÃ© d'ouverture CO\n"); break;
       case 2: printf("    Effacement ZC sous code confidentiel\n"); break;
       case 3: printf("    Effacement ZC libre\n"); break;
     }
@@ -2450,20 +2405,20 @@ void AfficheZF(void)
   if (ZF.Options & 0x0040)
     printf("    Pas de recyclage ZT automatique\n");
   else
-    printf("    Recyclage ZT automatique (avec faux plafond égal à 0)\n");
+    printf("    Recyclage ZT automatique (avec faux plafond Ã©gal Ã  0)\n");
   if (ZF.Options & 0x0010)
-    printf("    Effacement ZE non autorisé\n");
+    printf("    Effacement ZE non autorisÃ©\n");
   else
-    printf("    Effacement ZE automatique, géré par le masque B4-B0'\n");
+    printf("    Effacement ZE automatique, gÃ©rÃ© par le masque B4-B0'\n");
   if (ZF.Options & 0x0004)
-    printf("    ZT non effaçable\n");
+    printf("    ZT non effaÃ§able\n");
   else
   {
-    printf("    ZT effaçable\n");
+    printf("    ZT effaÃ§able\n");
     switch (ZF.Options & 0x0003)
     {
-      case 0: printf("    Effacement ZT sous clé banque CB\n"); break;
-      case 1: printf("    Effacement ZT sous clé d'ouverture CO\n"); break;
+      case 0: printf("    Effacement ZT sous clÃ© banque CB\n"); break;
+      case 1: printf("    Effacement ZT sous clÃ© d'ouverture CO\n"); break;
       case 2: printf("    Effacement ZT sous code confidentiel\n"); break;
       case 3: printf("    Effacement ZT libre\n"); break;
     }
@@ -2485,10 +2440,10 @@ void AfficheZF(void)
   switch (ZF.Application)
   {
     case 0x3fe5: printf("Bancaire\n"); break;
-    case 0x3fe2: printf("France Télécom\n"); break;
+    case 0x3fe2: printf("France TÃ©lÃ©com\n"); break;
     case 0x00e5: printf("ETEBAC 5\n"); break;
-    case 0x3fff: printf("Non initialisée\n"); break;
-    case 0x0fff: printf("Non initialisée\n"); break;
+    case 0x3fff: printf("Non initialisÃ©e\n"); break;
+    case 0x0fff: printf("Non initialisÃ©e\n"); break;
     default:     printf("Inconnu\n"); break;
   }
 
@@ -2496,11 +2451,11 @@ void AfficheZF(void)
   if (ZF.ProtectionZT & 0x04)
     printf("Lecture ZT libre, ");
   else
-    printf("Lecture ZT protégée, ");
+    printf("Lecture ZT protÃ©gÃ©e, ");
   if (ZF.ProtectionZT & 0x08)
     printf("Ecriture ZT libre\n");
   else
-    printf("Ecriture ZT protégée\n");
+    printf("Ecriture ZT protÃ©gÃ©e\n");
 
   printf("AD1           = 0x%03x (0x%04x)\n", ZF.AD1, ZF.AD1*8);
 
@@ -2516,7 +2471,7 @@ void AfficheZF(void)
     default: printf("Inconnu\n"); break;
   }
 
-  printf("Num série     = %10d (0x%08x)\n", ZF.NumSerie, ZF.NumSerie);
+  printf("Num sÃ©rie     = %10d (0x%08x)\n", ZF.NumSerie, ZF.NumSerie);
 
   printf("Num lot       = %02d (0x%02x)\n", ZF.NumLot, ZF.NumLot);
 
@@ -2528,7 +2483,7 @@ void AfficheZF(void)
  * void CloseAll(void)                                                      *
  *                                                                          *
  * Fonction : Routine incluse dans le processus de terminaison, elle sera   *
- *            appelée même en cas d'appel à la fonction exit()              *
+ *            appelÃ©e mÃªme en cas d'appel Ã  la fonction exit()              *
  ****************************************************************************/
 void CloseAll(void)
 {
@@ -2542,7 +2497,7 @@ void CloseAll(void)
 /****************************************************************************
  * int ChoisitLecteur(char **liste, int nblecteurs)                         *
  *                                                                          *
- * Fonction : Affiche les lecteurs présents sur le système, et demande à    *
+ * Fonction : Affiche les lecteurs prÃ©sents sur le systÃ¨me, et demande Ã     *
  * l'utilisateur d'en choisir un.                                           *
  ****************************************************************************/
 int ChoisitLecteur(char **liste, int nblecteurs)
@@ -2588,20 +2543,20 @@ int main(int argc, char **argv)
   printf("FBCDump\n");
   printf("Id: %s\n", rcsid);
 
-  /* Première chose à faire, discuter avec le PC/SC Resource Manager */
+  /* PremiÃ¨re chose Ã  faire, discuter avec le PC/SC Resource Manager */
   if ((rv=SCardEstablishContext(SCARD_SCOPE_USER, NULL, NULL, &context)) != SCARD_S_SUCCESS)
   {
-    printf("Erreur lors de l'établissement d'un contexte avec le SmartCard Resource Manager (%s).\n", SCardError(rv));
+    printf("Erreur lors de l'Ã©tablissement d'un contexte avec le SmartCard Resource Manager (%s).\n", SCardError(rv));
     exit(-1);
   }
 
-  /* En cas d'appel à exit(), on veut laisser la machine quand même propre... */
+  /* En cas d'appel Ã  exit(), on veut laisser la machine quand mÃªme propre... */
   atexit(CloseAll);
 
-  /* On cherche ensuite la liste des lecteurs enregistrés */
+  /* On cherche ensuite la liste des lecteurs enregistrÃ©s */
   if ((rv=SCardListReaders(context, NULL, NULL, &taille)) != SCARD_S_SUCCESS)
   {
-    printf("Erreur lors de la récupération de la liste des lecteurs de cartes (%s).\n", SCardError(rv));
+    printf("Erreur lors de la rÃ©cupÃ©ration de la liste des lecteurs de cartes (%s).\n", SCardError(rv));
     return EXIT_FAILURE;
   }
   else
@@ -2621,7 +2576,7 @@ int main(int argc, char **argv)
       lecteurs=malloc(sizeof(char*)*nblecteurs);
     if (!lecteurs)
     {
-      fprintf(stderr, "Impossible de réallouer un bloc de %d octets de long\n", sizeof(char*)*nblecteurs);
+      fprintf(stderr, "Impossible de rÃ©allouer un bloc de %d octets de long\n", sizeof(char*)*nblecteurs);
       exit(1);
     }
     lecteurs[nblecteurs-1]=strdup(liste+i);
@@ -2629,7 +2584,7 @@ int main(int argc, char **argv)
   }
 
   /* On affiche un menu, dont le contenu change en fonction du contexte,
-     on demande à l'utilisateur de faire un choix, ce qui changera le
+     on demande Ã  l'utilisateur de faire un choix, ce qui changera le
      contexte */
   while (!quit)
   {
@@ -2643,7 +2598,7 @@ int main(int argc, char **argv)
 	break;
 
       case 1: /* Choisir un lecteur de carte */
-	/* L'utilisateur se verra présenté un choix de ses lecteurs recensés, il devra en choisir un */
+	/* L'utilisateur se verra prÃ©sentÃ© un choix de ses lecteurs recensÃ©s, il devra en choisir un */
 	choixlecteur=ChoisitLecteur(lecteurs, nblecteurs);
 	Menu[2].displayed=1;
 	break;
@@ -2662,7 +2617,7 @@ int main(int argc, char **argv)
 	break;
 
       case 3: /* Fermer la session */
-	/* On libère la carte */
+	/* On libÃ¨re la carte */
 	SCardDisconnect(handle, SCARD_UNPOWER_CARD);
 	Menu[3].displayed=0;
 	Menu[4].displayed=0;
@@ -2675,14 +2630,14 @@ int main(int argc, char **argv)
 	Menu[11].displayed=0;
 	break;
 
-      case 4: /* Interprêter la réponse au reset */
-	/* On va demander à la couche PC/SC la réponse au reset */
+      case 4: /* InterprÃªter la rÃ©ponse au reset */
+	/* On va demander Ã  la couche PC/SC la rÃ©ponse au reset */
 	if ((rv=SCardStatus(handle, liste, &taille, &cardstate, &protocol, Atr, &AtrLen)) != SCARD_S_SUCCESS)
-	  printf("Erreur lors de l'appel à SCardStatus (%s).\n", SCardError(rv));
+	  printf("Erreur lors de l'appel Ã  SCardStatus (%s).\n", SCardError(rv));
 	else
 	{
-	  /* Pas d'erreur, on tente de l'interprêter */
-	  printf("þ Identification de la carte þ\n");
+	  /* Pas d'erreur, on tente de l'interprÃªter */
+	  printf("Ã¾ Identification de la carte Ã¾\n");
 	  printf("==============================\n");
 	  printf("ATR:\n");
 	  DumpData(Atr, AtrLen, "    ");
@@ -2706,7 +2661,7 @@ int main(int argc, char **argv)
 	    default  : printf("Inconnu\n");
 		       break;
 	  }
-	  printf("Caractéristiques fonctionnelles (MCF=%02x): ", Atr[5]);
+	  printf("CaractÃ©ristiques fonctionnelles (MCF=%02x): ", Atr[5]);
 	  switch (Atr[5])
 	  {
 	    case 0x04: printf("Masque 4\n"); break;
@@ -2720,7 +2675,7 @@ int main(int argc, char **argv)
 	break;
 
       case 6: /* Lire la carte bancaire */
-	/* On initialise les zones à blanc */
+	/* On initialise les zones Ã  blanc */
 	memset(&ZE, 0, sizeof(ZE));
 	memset(&ZC, 0, sizeof(ZC));
 	memset(&ZT, 0, sizeof(ZT));
@@ -2737,27 +2692,27 @@ int main(int argc, char **argv)
 	break;
 
       case 8: /* Afficher la Zone de Lecture */
-	printf("\nþ Contenu de la Zone de Lecture þ\n");
+	printf("\n= Contenu de la Zone de Lecture =\n");
 	printf("=================================\n");
 	DumpData(ZL.buf, ZL.len, "");
 	AffichePrestataires(ZL.PremierPrestataire);
 	break;
 
       case 9: /* Afficher la Zone d'Etat */
-	printf("\nþ Contenu de la Zone d'Etat þ\n");
+	printf("\n= Contenu de la Zone d'Etat =\n");
 	printf("=============================\n");
 	DumpData(ZE.buf, ZE.len, "");
 	break;
 
       case 10: /* Afficher la Zone Confidentielle */
-	printf("\nþ Contenu de la Zone Confidentielle þ\n");
+	printf("\n= Contenu de la Zone Confidentielle =\n");
 	printf("=====================================\n");
 	DumpData(ZC.buf, ZC.len, "");
 	AffichePrestataires(ZC.PremierPrestataire);
 	break;
 
       case 11: /* Afficher la Zone de Transaction */
-	printf("\nþ Contenu de la Zone des Transactions þ\n");
+	printf("\n= Contenu de la Zone des Transactions =\n");
 	printf("=======================================\n");
 	DumpData(ZT.buf, ZT.len, "");
 	AfficheTransactions(ZT.buf, ZT.len);
