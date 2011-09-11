@@ -1,21 +1,24 @@
-static char rcsid[]="$Id: rndsig.c,v 1.7 2004/10/18 13:42:22 eabalea Exp $";
+static char rcsid[] = "$Id: rndsig.c,v 1.8 2011/09/11 22:27:56 eabalea Exp $";
 
 /*
  * $Log: rndsig.c,v $
+ * Revision 1.8  2011/09/11 22:27:56  eabalea
+ * Indentation, passage en UTF8, ajout de l'option "Timer".
+ *
  * Revision 1.7  2004/10/18 13:42:22  eabalea
  * Passage en version 0.3.
- * Le programme passe maintenant réellement en arrière-plan.
+ * Le programme passe maintenant rÃ©ellement en arriÃ¨re-plan.
  *
  * Revision 1.6  2003/12/22 11:49:33  eabalea
  * rndsig peut maintenant accepter des arguments, dont le chemin vers le
  * fichier de config.
  * rndsig ignore maintenant les SIGPIPE, pour ne pas planter avec Pine
  * (qui fait un fstat() pour s'apercevoir que le fichier a une taille
- * nulle, et le fermer immédiatement)
+ * nulle, et le fermer immÃ©diatement)
  *
  * Revision 1.5  2001/02/03 18:22:58  eabalea
- * Support des signatures multi-lignes. Le mot-clé 'Quotes' désigne maintenant les
- * signatures multi-lignes. Pour les signatures simple-ligne, utiliser le mot-clé
+ * Support des signatures multi-lignes. Le mot-clÃ© 'Quotes' dÃ©signe maintenant les
+ * signatures multi-lignes. Pour les signatures simple-ligne, utiliser le mot-clÃ©
  * TagLines.
  *
  * Revision 1.4  2000/12/21 01:49:21  eabalea
@@ -69,6 +72,7 @@ enum {
   oReverse,
   oRandom
 } order = oRandom;
+int timer = 1;
 
 
 /******
@@ -99,7 +103,7 @@ void readtaglines(void)
   if (debug)
     printf("Entering readtaglines()\n");
 
-  if (!(f=fopen(taglinesfile, "r")))
+  if (!(f = fopen(taglinesfile, "r")))
   {
     fprintf(stderr, "Unable to open %s for reading.\n", taglinesfile);
     exit(-1);
@@ -107,10 +111,10 @@ void readtaglines(void)
   while(fgets(buf, sizeof(buf)-1, f))
   {
     if (nbsigs)
-      sigs=(unsigned char **)realloc(sigs, (nbsigs+1)*sizeof(unsigned char **));
+      sigs = (unsigned char **)realloc(sigs, (nbsigs+1)*sizeof(unsigned char **));
     else
-      sigs=(unsigned char **)malloc((nbsigs+1)*sizeof(unsigned char **));
-    sigs[nbsigs++]=strdup(buf);
+      sigs = (unsigned char **)malloc((nbsigs+1)*sizeof(unsigned char **));
+    sigs[nbsigs++] = strdup(buf);
   }
   fclose(f);
 
@@ -131,14 +135,14 @@ void readquotes(void)
 {
   FILE *f;
   char buf[1024],
-       *quote=NULL;
-  int quotelen=0,
-      endquote=0;
+       *quote = NULL;
+  int quotelen = 0,
+      endquote = 0;
 
   if (debug)
     printf("Entering readquotes\n");
 
-  if (!(f=fopen(quotesfile, "r")))
+  if (!(f = fopen(quotesfile, "r")))
   {
     fprintf(stderr, "Unable to open %s for reading.\n", quotesfile);
     exit(-1);
@@ -148,24 +152,24 @@ void readquotes(void)
   {
     /* Read an entire quote (quotes end with '%%' on a line) */
     do {
-      buf[0]=0;
+      buf[0] = 0;
       fgets(buf, sizeof(buf)-1, f);
       if (buf[0]) /* Check if we reached end-of-file */
-        endquote=!strncmp(buf, "%%", 2);
+        endquote = !strncmp(buf, "%%", 2);
       else
-        endquote=1;
+        endquote = 1;
       if (!endquote) /* If we didn't reach end-of-file, then copy the line to the current quote */
       {
         if (quotelen)
         {
-          quotelen+=strlen(buf);
-          quote=realloc(quote, quotelen+1);
+          quotelen += strlen(buf);
+          quote = realloc(quote, quotelen+1);
         }
         else
         {
-          quotelen=strlen(buf);
-          quote=malloc(quotelen+1);
-          quote[0]=0;
+          quotelen = strlen(buf);
+          quote = malloc(quotelen+1);
+          quote[0] = 0;
         }
         strcat(quote, buf);
       }
@@ -175,13 +179,13 @@ void readquotes(void)
     if (quote)
     {
       if (nbsigs)
-        sigs=(unsigned char **)realloc(sigs, (nbsigs+1)*sizeof(unsigned char **));
+        sigs = (unsigned char **)realloc(sigs, (nbsigs+1)*sizeof(unsigned char **));
       else
-        sigs=(unsigned char **)malloc((nbsigs+1)*sizeof(unsigned char **));
-      sigs[nbsigs++]=strdup(quote);
+        sigs = (unsigned char **)malloc((nbsigs+1)*sizeof(unsigned char **));
+      sigs[nbsigs++] = strdup(quote);
       free(quote);
-      quote=NULL;
-      quotelen=0;
+      quote = NULL;
+      quotelen = 0;
     }
   }
   fclose(f);
@@ -205,10 +209,10 @@ void SIGHUPhandler(int signum)
 
   printf("Entering SIGHUPhandler()\n");
 
-  for(i=0; i < nbsigs; i++)
+  for(i = 0; i < nbsigs; i++)
     free(sigs[i]);
   free(sigs);
-  nbsigs=0;
+  nbsigs = 0;
 
   readtaglines();
   readquotes();
@@ -238,10 +242,10 @@ void SIGQUIThandler(int signum)
   if (debug)
     printf("Entering SIGQUIThandler()\n");
   
-  for(i=0; i < nbsigs; i++)
+  for(i = 0; i < nbsigs; i++)
     free(sigs[i]);
   free(sigs);
-  free(template);
+  //free(template);
   //fclose(outputpipe);
   //unlink(output);
   exit(-1);
@@ -277,7 +281,7 @@ void trim(unsigned char *s)
 {
   /* Remove from the end */
   while (isspace(s[strlen(s)-1]))
-    s[strlen(s)-1]=0;
+    s[strlen(s)-1] = 0;
   
   /* Remove from the start */
   while (isspace(s[0]))
@@ -295,18 +299,36 @@ int booleanvalue(unsigned char *s)
   char *s2;
   int r = -1;
   
-  s2=strdup(s);
+  s2 = strdup(s);
   trim(s2);
   if (   !strncasecmp(s2, "True", strlen("True")) 
       || !strncasecmp(s2, "Yes", strlen("Yes"))
       || !strncasecmp(s2, "1", strlen("1")))
-    r=1;
+    r = 1;
 
   if (   !strncasecmp(s2, "False", strlen("False")) 
       || !strncasecmp(s2, "No", strlen("No"))
       || !strncasecmp(s2, "0", strlen("0")))
-    r=0;
+    r = 0;
 
+  free(s2);    
+  return r;
+}
+
+
+/******
+ * int integervalue(unsigned char *s)
+ *
+ * Return the integer value of the parameter.
+ ******/
+int integervalue(unsigned char *s)
+{
+  char *s2;
+  int r = -1;
+  
+  s2 = strdup(s);
+  trim(s2);
+  r = atoi(s2);
   free(s2);    
   return r;
 }
@@ -323,16 +345,16 @@ int ordervalue(unsigned char *s)
   char *s2;
   int r = -1;
   
-  s2=strdup(s);
+  s2 = strdup(s);
   trim(s2);
   if (!strncasecmp(s2, "Regular", strlen("Regular"))) 
-    r=oRegular;
+    r = oRegular;
 
   if (!strncasecmp(s2, "Reverse", strlen("Reverse"))) 
-    r=oReverse;
+    r = oReverse;
     
   if (!strncasecmp(s2, "Random", strlen("Random")))
-    r=oRandom;
+    r = oRandom;
 
   free(s2);
   return r;
@@ -347,10 +369,10 @@ int ordervalue(unsigned char *s)
  ******/
 void expandfilename(unsigned char *s)
 {
-  char s2[1024]="";
+  char s2[1024] = "";
   int i;
   
-  for(i=0; i < strlen(s); i++)
+  for(i = 0; i < strlen(s); i++)
     if (s[i] == '~')
       if (i < strlen(s))
         if (s[i+1] != '/')
@@ -359,24 +381,24 @@ void expandfilename(unsigned char *s)
           int j;
           struct passwd *pwd;
           
-          for(j=i; (j < strlen(s)) && (s[j] != '/'); j++)
-            name[j-i]=s[j];
-          name[j]=0;
-          pwd=getpwnam(name);
+          for(j = i; (j < strlen(s)) && (s[j] != '/'); j++)
+            name[j-i] = s[j];
+          name[j] = 0;
+          pwd = getpwnam(name);
           strcat(s2, pwd->pw_dir);
         }
         else
         {
           struct passwd *pwd;
           
-          pwd=getpwuid(getuid());
+          pwd = getpwuid(getuid());
           strcat(s2, pwd->pw_dir);
         }
       else
       {
         struct passwd *pwd;
         
-        pwd=getpwuid(getuid());
+        pwd = getpwuid(getuid());
         strcat(s2, pwd->pw_dir);
       }
     else
@@ -400,7 +422,7 @@ void readrcfile(void)
   expandfilename(rcfile);
   
   /* Let's try to open it */
-  f=fopen(rcfile, "rt");
+  f = fopen(rcfile, "rt");
   if (!f)
   {
     fprintf(stderr, "Unable to open resource file: %s\n", rcfile);
@@ -410,7 +432,7 @@ void readrcfile(void)
   /* Read until we reach the end */
   while(!feof(f))
   {
-    buf[0]=0;
+    buf[0] = 0;
     fgets(buf, sizeof(buf)-1, f);
     trim(buf);
     switch (buf[0])
@@ -461,16 +483,24 @@ void readrcfile(void)
         /* Is it an 'InsertDashes' line? */
         if (!strncasecmp(buf, "InsertDashes", strlen("InsertDashes")))
         {
-          insertdashes=booleanvalue(buf+strlen("InsertDashes"));
+          insertdashes = booleanvalue(buf+strlen("InsertDashes"));
           break;
         }
         
         /* Is it an 'Order' line? */
         if (!strncasecmp(buf, "Order", strlen("Order")))
         {
-          order=ordervalue(buf+strlen("Order"));
+          order = ordervalue(buf+strlen("Order"));
           break;
         }
+
+	/* Is it a 'Timer' line? */
+	if (!strncasecmp(buf, "Timer", strlen("Timer")))
+	{
+	  timer = integervalue(buf+strlen("Timer"));
+	  if (timer < 1) timer = 1;
+	  break;
+	}
         
         /* None of the above, just issue a warning */
         fprintf(stderr, "Warning, line '%s' ignored.\n", buf);
@@ -492,7 +522,7 @@ void readrcfile(void)
     readtaglines();
 
   /* Next thing to do is to get the template */
-  if (!(f=fopen(template, "r")))
+  if (!(f = fopen(template, "r")))
   {
     fprintf(stderr, "Unable to read the template (%s).\n", template);
     exit(-1);
@@ -612,7 +642,7 @@ void beadaemon(void)
    * process is leader of nothing, has no terminal attached to it, and
    * has no way to attach to a terminal.
    */
-  son=fork();
+  son = fork();
   switch (son)
   {
     case -1:
@@ -684,7 +714,7 @@ int main(int argc, char **argv)
     if (debug)
       printf("Attempting to open %s\n", output);
 
-    f=fopen(output, "w");
+    f = fopen(output, "w");
     if (!f)
     {
       fprintf(stderr, "Unable to open '%s'\n", output);
@@ -722,7 +752,7 @@ int main(int argc, char **argv)
     if (debug)
       printf("Sleeping for 1 second\n");
 
-    sleep(1);
+    sleep(timer);
   }
 
   return 0;
