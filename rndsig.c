@@ -1,40 +1,4 @@
-static char rcsid[] = "$Id: rndsig.c,v 1.8 2011/09/11 22:27:56 eabalea Exp $";
-
-/*
- * $Log: rndsig.c,v $
- * Revision 1.8  2011/09/11 22:27:56  eabalea
- * Indentation, passage en UTF8, ajout de l'option "Timer".
- *
- * Revision 1.7  2004/10/18 13:42:22  eabalea
- * Passage en version 0.3.
- * Le programme passe maintenant réellement en arrière-plan.
- *
- * Revision 1.6  2003/12/22 11:49:33  eabalea
- * rndsig peut maintenant accepter des arguments, dont le chemin vers le
- * fichier de config.
- * rndsig ignore maintenant les SIGPIPE, pour ne pas planter avec Pine
- * (qui fait un fstat() pour s'apercevoir que le fichier a une taille
- * nulle, et le fermer immédiatement)
- *
- * Revision 1.5  2001/02/03 18:22:58  eabalea
- * Support des signatures multi-lignes. Le mot-clé 'Quotes' désigne maintenant les
- * signatures multi-lignes. Pour les signatures simple-ligne, utiliser le mot-clé
- * TagLines.
- *
- * Revision 1.4  2000/12/21 01:49:21  eabalea
- * Added autotools to help install the stuff
- *
- * Revision 1.3  2000/12/13 17:04:35  eabalea
- * I forgot to uncomment the fork() call
- *
- * Revision 1.2  2000/12/13 17:03:33  eabalea
- * Added a SIGHUP signal handler. It only frees the quotes, and re-read them
- * from the quotes file
- *
- * Revision 1.1  2000/12/13 16:44:27  eabalea
- * Initial revision
- *
- */
+static char rcsid[] = "$Id: rndsig.c,v 1.9 2011/09/11 23:10:19 eabalea Exp $";
 
 /**************
  * Necessary include files
