@@ -1,20 +1,20 @@
-static char rcsid[] = "$Id: minisecsrv.c,v 1.1 2013/03/26 23:32:31 eabalea Exp $";
+static char rcsid[] = "$Id: minisecsrv.c,v 1.2 2013/03/26 23:38:50 eabalea Exp $";
 
 /*
  * encrypt len data\n
- * ok encrypted len data\n
+ * ok len data\n
  * nok code reasontext\n
  *
  * decrypt len data\n
- * ok decrypted len data\n
+ * ok len data\n
  * nok code reasontext\n
  *
  * seal len data\n
- * ok sealed len data\n
+ * ok len data\n
  * nok code reasontext\n
  *
  * check len data\n
- * ok check len data\n
+ * ok len data\n
  * nok code reasontext\n
  */
 
