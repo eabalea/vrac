@@ -1,4 +1,4 @@
-static char rcsid[] = "$Id: minisecsrv.c,v 1.2 2013/03/26 23:38:50 eabalea Exp $";
+static char rcsid[] = "$Id: minisecsrv.c,v 1.3 2013/03/27 18:37:06 eabalea Exp $";
 
 /*
  * encrypt len data\n
@@ -8,29 +8,18 @@ static char rcsid[] = "$Id: minisecsrv.c,v 1.2 2013/03/26 23:38:50 eabalea Exp $
  * decrypt len data\n
  * ok len data\n
  * nok code reasontext\n
- *
- * seal len data\n
- * ok len data\n
- * nok code reasontext\n
- *
- * check len data\n
- * ok len data\n
- * nok code reasontext\n
  */
 
 
-/**************
- * Necessary include files
- **************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <openssl/evp.h>
 #include <signal.h>
-#include <getopt.h>
-#include <dirent.h>
+#include <openssl/crypto.h>
 #include "utils.h"
 #include "config.h"
+
+#define detach if (fork()); else for (;; exit(0))
 
 
 /**************
@@ -40,11 +29,8 @@ minisecsrv_cfg *cfg = NULL;
 
 
 /******
- * void SIGQUIThandler(int signum)
- *
  * SIGQUIT signal handler
- * This one will release everything in memory, close and delete the named 
- * pipe, and quit the program.
+ * It should clean memory, and quit.
  ******/
 void SIGQUIThandler(int signum)
 {
@@ -53,64 +39,120 @@ void SIGQUIThandler(int signum)
   if (cfg->debug)
     printf("Entering SIGQUIThandler()\n");
   
-  /* Terminate all pending actions, and quit properly */
+  OPENSSL_cleanse(cfg->key, cfg->enc->key_len);
+  OPENSSL_cleanse(cfg->passphrase, strlen(cfg->passphrase)+1);
 
   exit(-1);
 }
 
 
 /******
- * int main(int argc, char **argv)
- *
  * Everything starts here...
  ******/
 int main(int argc, char **argv)
 {
-  FILE *f;
-  unsigned char iv[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  unsigned char in[1024];
-  unsigned char out[1024];
-  unsigned int inl = 0;
-  unsigned int outl = 0;
-  unsigned int tmpl = 0;
-  unsigned int i;
-  int rc;
+  BIO *abio = NULL;
+  BIO *biobuf = NULL;
+  int rc = 0;
 
-  init(argc, argv, &cfg);
+  if (rc = init(argc, argv, &cfg))
+    goto done;
 
-  printf("Key: ");
-  for(i = 0; i < cfg->enc->key_len; i++)
-    printf("%02X ", cfg->key[i]);
-  printf("\n");
+#if 0
+  {
+    unsigned char in[1024];
+    unsigned char *out = NULL;
+    unsigned int inl = 0;
+    unsigned int outl = 0;
+    unsigned int i;
 
-  printf("Encrypting \"Hello, demo world!\".\n");
-  memcpy(in, "Hello, demo world!", 18);
-  inl = 18;
-  dobarecrypt(cfg, iv, in, inl, out, &outl);
-  for(i = 0; i < outl; i++)
-    printf("%02X ", out[i]);
-  printf("\n");
+    memcpy(in, "Hello, demo world!", 18);
+    inl = 18;
 
-  printf("Decrypting the result.\n");
-  memcpy(in, out, outl);
-  inl = outl;
-  dobaredecrypt(cfg, iv, in, inl, out, &outl);
-  for(i = 0; i < outl; i++)
-    printf("%02X ", out[i]);
-  printf("\n");
+    printf("Encrypting \"Hello, demo world!\".\n");
+    dofullencrypt(cfg, in, inl, &out, &outl);
+    for(i = 0; i < outl; i++)
+      printf("%c", out[i]);
+    printf("\n");
 
-  //printf("Ready to serve...\n");
+    memcpy(in, out, outl);
+    inl = outl;
+    free(out);
+    out = NULL;
 
-  // signal(SIGHUP, SIGHUPhandler);
+    printf("Decrypting the result.\n");
+    dofulldecrypt(cfg, in, inl, &out, &outl);
+    for(i = 0; i < outl; i++)
+      printf("%c", out[i]);
+    printf("\n");
+  }
+#endif
+
+  printf("Ready to serve...\n");
+
   signal(SIGQUIT, SIGQUIThandler);
-  // signal(SIGPIPE, SIGPIPEhandler);
   
-  //if (!debug)
-  //  beadaemon();
+  /* We need a BIO to accept connections */
+  abio = BIO_new_accept(cfg->hostport);
+  if (!abio)
+  {
+    fprintf(stderr, "Unable to create a new accept BIO.\n");
+    rc = -1;
+    goto done;
+  }
+  BIO_set_bind_mode(abio, BIO_BIND_REUSEADDR);
+  if (BIO_do_accept(abio) <= 0)
+  {
+    fprintf(stderr, "Unable to accept connections.\n");
+    rc = -1;
+    goto done;
+  }
 
-  //while (1)
-  //{
-  //}
+  /* And we add a buffer BIO that will be duplicated for each created
+   * connections
+   */
+  biobuf = BIO_new(BIO_f_buffer());
+  if (!biobuf)
+  {
+    fprintf(stderr, "Unable to create a buffer BIO.\n");
+    rc = -1;
+    goto done;
+  }
+  BIO_set_accept_bios(abio, biobuf);
+
+  /* Release all rights and go background */
+  if (!cfg->debug)
+  {
+    changeidentity(cfg->user, cfg->group);
+    beadaemon();
+  }
+
+  while (1)
+  {
+    BIO *cbio = NULL;
+
+    /* This is a blocking call */
+    BIO_do_accept(abio);
+
+    /* A connection has arrived, detach the corresponding BIO */
+    cbio = BIO_pop(abio);
+//    detach {
+      unsigned char command[8] = "";
+      unsigned char len[8] = "";
+      BIO *content = NULL;
+
+      rc = BIO_gets(cbio, command, 8);
+      rc = BIO_gets(cbio, len, 8);
+      rc = BIO_puts(cbio, "Gotcha\n");
+      rc = BIO_puts(cbio, command);
+      rc = BIO_puts(cbio, "\n");
+      rc = BIO_puts(cbio, len);
+      rc = BIO_puts(cbio, "\n");
+      BIO_free_all(cbio);
+//    }
+  }
   
-  return 0;
+done:
+  BIO_free(abio);
+  return rc;
 }

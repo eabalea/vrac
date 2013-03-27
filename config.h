@@ -1,7 +1,9 @@
 #ifndef MINISECSRV_CONFIG_H
 #define MINISECSRV_CONFIG_H
 
-#define MINISECSRV_DEFAULTPORT 1234
+#include <openssl/evp.h>
+
+#define MINISECSRV_DEFAULTHOSTPORT "127.0.0.1:1234"
 #define MINISECSRV_DEFAULTCIPHER "aes-128-cbc"
 #define MINISECSRV_DEFAULTRCFILE "~/.minisecsrv"
 #define MINISECSRV_DEFAULTITERATIONS 1024
@@ -12,15 +14,16 @@ typedef struct {
   unsigned char *cipher;
   unsigned char *hash;
   unsigned char *salt;
-  unsigned int saltlen;
   unsigned int iterations;
+  unsigned char *checkvalue;
+  unsigned char *hostport;
   const EVP_CIPHER *enc;
   const EVP_MD *digest;
   int debug;
-  int port;
   int enableoutput;
-  int printcheck;
   unsigned char *output;
+  unsigned char *group;
+  unsigned char *user;
   unsigned char *passphrase;
   unsigned char *key;
 } minisecsrv_cfg;
