@@ -1,4 +1,4 @@
-static char rcsid[] = "$Id: config.c,v 1.2 2013/03/27 18:37:06 eabalea Exp $";
+static char rcsid[] = "$Id: config.c,v 1.3 2013/03/28 15:48:06 eabalea Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -262,6 +262,7 @@ int readrcfile(minisecsrv_cfg *cfg)
 	    rc = -1;
 	    goto done;
 	  }
+	  trim(cfg->hostport);
 	  break;
 	}
 
