@@ -1,0 +1,4 @@
+* Faire du multithread
+* Supporter le chiffrement AEAD (modes GCM, CCM, peut-être OCB)
+* Ajouter des fonctions de MAC (HMAC, GMAC, ...)
+* Contrôle d'accès?
