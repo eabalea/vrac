@@ -1,4 +1,4 @@
-static char rcsid[] = "$Id: minisecsrv.c,v 1.4 2013/03/28 00:16:08 eabalea Exp $";
+static char rcsid[] = "$Id: minisecsrv.c,v 1.5 2013/03/28 15:49:17 eabalea Exp $";
 
 /*
  * encrypt len data\n
@@ -47,6 +47,95 @@ void SIGQUIThandler(int signum)
 
 
 /******
+ * Read the request from the socket, do the job, return the result.
+ * This version is super dumb, pure serial.
+ ******/
+int processrequest(BIO *cbio)
+{
+  unsigned char command[8] = "";
+  unsigned char sep;
+  unsigned char len_s[9] = "";
+  unsigned char dummystr[9];
+  unsigned int len = 0;
+  unsigned char *datain = NULL;
+  unsigned int datainl = 0;
+  unsigned char *dataout = NULL;
+  unsigned int dataoutl = 0;
+  int rc = 0;
+
+  memset(command, 0, sizeof(command));
+  memset(len_s, 0, sizeof(len_s));
+
+  /* Reading protocol elements (very dumb version) */
+  if ((rc = BIO_read(cbio, command, 7)) <= 0)
+  { rc = -1; goto done; }
+  if ((rc = BIO_read(cbio, &sep, 1)) <= 0)
+  { rc = -1; goto done; }
+  if (sep != ' ')
+  { rc = -1; goto done; }
+  if (!strncmp(command, "encrypt", 7) && !strncmp(command, "decrypt", 7))
+  { rc = -1; goto done; }
+  if ((rc = BIO_read(cbio, len_s, 8)) <= 0)
+  { rc = -1; goto done; }
+  if ((rc = BIO_read(cbio, &sep, 1)) <= 0)
+  { rc = -1; goto done; }
+  if (sep != ' ')
+  { rc = -1; goto done; }
+
+  /* "len" field of the protocol is expressed in hex, malloc necessary
+   * memory and read data
+   */
+  len = strtoul(len_s, NULL, 16);
+  datain = malloc(len);
+  if (!datain)
+  { rc = -1; goto done; }
+  datainl = BIO_read(cbio, datain, len);
+  if (datainl != len)
+  { rc = -1; goto done; }
+
+  /* Check the final character (\n) */
+  if ((rc = BIO_read(cbio, &sep, 1)) <= 0)
+  { rc = -1; goto done; }
+  if (sep != '\n')
+  { rc = -1; goto done; }
+
+  /* Do the work */
+  if (!strncmp(command, "encrypt", 7))
+    rc = dofullencrypt(cfg, datain, datainl, &dataout, &dataoutl);
+  else
+    rc = dofulldecrypt(cfg, datain, datainl, &dataout, &dataoutl);
+
+  /* Send the result */
+  if (!rc)
+  {
+    BIO_puts(cbio, "ok ");
+    sprintf(dummystr, "%08x", dataoutl);
+    BIO_puts(cbio, dummystr);
+    BIO_puts(cbio, " ");
+    BIO_write(cbio, dataout, dataoutl);
+    BIO_puts(cbio, "\n");
+  }
+  else
+  {
+    BIO_puts(cbio, "nok ");
+    sprintf(dummystr, "%08x", rc);
+    BIO_puts(cbio, dummystr);
+    BIO_puts(cbio, " ");
+    BIO_puts(cbio, "No text description at the moment");
+    BIO_puts(cbio, "\n");
+  }
+
+  rc = BIO_flush(cbio);
+
+done:
+  BIO_free_all(cbio);
+  if (datain)
+    free(datain);
+  return rc;
+}
+
+
+/******
  * Everything starts here...
  ******/
 int main(int argc, char **argv)
@@ -57,38 +146,6 @@ int main(int argc, char **argv)
 
   if (rc = init(argc, argv, &cfg))
     goto done;
-
-#if 0
-  {
-    unsigned char in[1024];
-    unsigned char *out = NULL;
-    unsigned int inl = 0;
-    unsigned int outl = 0;
-    unsigned int i;
-
-    memcpy(in, "Hello, demo world!", 18);
-    inl = 18;
-
-    printf("Encrypting \"Hello, demo world!\".\n");
-    dofullencrypt(cfg, in, inl, &out, &outl);
-    for(i = 0; i < outl; i++)
-      printf("%c", out[i]);
-    printf("\n");
-
-    memcpy(in, out, outl);
-    inl = outl;
-    free(out);
-    out = NULL;
-
-    printf("Decrypting the result.\n");
-    dofulldecrypt(cfg, in, inl, &out, &outl);
-    for(i = 0; i < outl; i++)
-      printf("%c", out[i]);
-    printf("\n");
-  }
-#endif
-
-  printf("Ready to serve...\n");
 
   signal(SIGQUIT, SIGQUIThandler);
   
@@ -101,10 +158,9 @@ int main(int argc, char **argv)
     goto done;
   }
   BIO_set_bind_mode(abio, BIO_BIND_REUSEADDR);
-  if (BIO_do_accept(abio) <= 0)
+  if ((rc = BIO_do_accept(abio)) <= 0)
   {
     fprintf(stderr, "Unable to accept connections.\n");
-    rc = -1;
     goto done;
   }
 
@@ -134,22 +190,11 @@ int main(int argc, char **argv)
     /* This is a blocking call */
     BIO_do_accept(abio);
 
-    /* A connection has arrived, detach the corresponding BIO */
-//    detach {
-      unsigned char command[8] = "";
-      unsigned char len[8] = "";
-
-      cbio = BIO_pop(abio);
-      rc = BIO_gets(cbio, command, 8);
-      rc = BIO_gets(cbio, len, 8);
-      rc = BIO_puts(cbio, "Gotcha\n");
-      rc = BIO_puts(cbio, command);
-      rc = BIO_puts(cbio, "\n");
-      rc = BIO_puts(cbio, len);
-      rc = BIO_puts(cbio, "\n");
-      rc = BIO_flush(cbio);
-      BIO_free_all(cbio);
-//    }
+    /* A connection has arrived, detach the corresponding BIO and
+     * process the request
+     */
+    cbio = BIO_pop(abio);
+    processrequest(cbio);
   }
   
 done:
