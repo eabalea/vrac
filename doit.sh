@@ -5,8 +5,8 @@ CFLAGS="-g -O0"
 #CFLAGS="-O2"
 LIBS="-lcrypto"
 
-case `uname -o` in
-  GNU/Linux)
+case `uname` in
+  Linux)
     ;;
   Darwin)
     INCLUDEPATH="-I/opt/local/include"

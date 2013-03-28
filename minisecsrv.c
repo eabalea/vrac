@@ -1,4 +1,4 @@
-static char rcsid[] = "$Id: minisecsrv.c,v 1.3 2013/03/27 18:37:06 eabalea Exp $";
+static char rcsid[] = "$Id: minisecsrv.c,v 1.4 2013/03/28 00:16:08 eabalea Exp $";
 
 /*
  * encrypt len data\n
@@ -135,12 +135,11 @@ int main(int argc, char **argv)
     BIO_do_accept(abio);
 
     /* A connection has arrived, detach the corresponding BIO */
-    cbio = BIO_pop(abio);
 //    detach {
       unsigned char command[8] = "";
       unsigned char len[8] = "";
-      BIO *content = NULL;
 
+      cbio = BIO_pop(abio);
       rc = BIO_gets(cbio, command, 8);
       rc = BIO_gets(cbio, len, 8);
       rc = BIO_puts(cbio, "Gotcha\n");
@@ -148,6 +147,7 @@ int main(int argc, char **argv)
       rc = BIO_puts(cbio, "\n");
       rc = BIO_puts(cbio, len);
       rc = BIO_puts(cbio, "\n");
+      rc = BIO_flush(cbio);
       BIO_free_all(cbio);
 //    }
   }
