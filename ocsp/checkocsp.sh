@@ -14,7 +14,48 @@ ESCAPE=0
 #  - be able to request for several certificates at once, from the same CA or not
 #  - be able to request for an arbitrary serial number
 
-TEMP=`getopt -o gpc:kntu:eh --long get,post,cert:,keep,nonce,time,url:,escape,signer:,signkey:,authcert:,authkey:,help -n 'checkocsp.sh' -- "$@"`
+function detectgetopt () {
+  getopt -T > /dev/null 2>&1
+  if [ $? -eq 4 ]; then
+    GETOPTVARIANT=GNU
+  else
+    GETOPTVARIANT=BSD
+  fi
+  echo $GETOPTVARIANT
+}
+
+function displayhelp () {
+  echo "Options:"
+  echo "  -g|--get"
+  echo "  -p|--post (by default)"
+  echo "  -c|--cert <file>"
+  echo "  -k|--keep"
+  echo "  -n|--nonce"
+  echo "  -t|--time"
+  echo "  -u|--url <OCSP URL>"
+  echo "  -e|--escape"
+
+  if [ `detectgetopt` == "GNU" ]; then
+    echo "  --signer <file>"
+    echo "  --signkey <file>"
+    echo "  --authcert <file>"
+    echo "  --authkey <file>"
+  fi
+
+  if [ `detectgetopt` == "BSD" ]; then
+    echo
+    echo "You're using a BSD-style getopt, so long options aren't accessible."
+  fi
+}
+
+case `detectgetopt` in
+  GNU)
+    TEMP=`getopt -o gpc:kntu:eh --long get,post,cert:,keep,nonce,time,url:,escape,signer:,signkey:,authcert:,authkey:,help -n 'checkocsp.sh' -- "$@"`
+    ;;
+  BSD)
+    TEMP=`getopt gpc:kntu:eh $*`
+    ;;
+esac
 
 eval set -- "$TEMP"
 
@@ -32,24 +73,9 @@ while true ; do
     --signkey) SIGNKEY=$2; shift 2;;
     --authcert) AUTHCERT=$2; shift 2;;
     --authkey) AUTHKEY=$2; shift 2;;
-    -h|--help) echo "Options:"
-               echo "  -g|--get"
-	       echo "  -p|--post (by default)"
-	       echo "  -c|--cert <file>"
-	       echo "  -k|--keep"
-	       echo "  -n|--nonce"
-	       echo "  -t|--time"
-	       echo "  -u|--url <OCSP URL>"
-	       echo "  -e|--escape"
-	       echo "  --signer <file>"
-	       echo "  --signkey <file>"
-	       echo "  --authcert <file>"
-	       echo "  --authkey <file>"
-	       shift
-	       exit 1
-	       ;;
-    --) shift; break ;;
-    *) echo "Internal error!"; exit 1;;
+    -h|--help) displayhelp; shift; exit 1;;
+    --) shift; break;;
+    *) echo "Internal error!"; displayhelp; exit 1;;
   esac
 done
 
