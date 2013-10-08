@@ -24,6 +24,16 @@ function detectgetopt () {
   echo $GETOPTVARIANT
 }
 
+function detecthttpclient () {
+  for i in wget curl; do
+    which $i > /dev/null
+    if [ $? -eq 0 ]; then
+      echo $i
+      break
+    fi
+  done
+}
+
 function displayhelp () {
   echo "Options:"
   echo "  -g|--get"
@@ -94,11 +104,17 @@ if [ ! -z "$AUTHKEY" -a -z "$AUTHCERT" ]; then
 fi
 
 if [ ! -z "$AUTHCERT" ]; then
-  AUTH="$AUTH --certificate=\"$AUTHCERT\""
+  case `detecthttpclient` in
+    wget) AUTH="$AUTH --certificate=\"$AUTHCERT\"";;
+    curl) AUTH="$AUTH --cert \"$AUTHCERT\"";;
+  esac
 fi
 
 if [ ! -z "$AUTHKEY" ]; then
-  AUTH="$AUTH --private-key=\"$AUTHKEY\""
+  case `detecthttpclient` in
+    wget) AUTH="$AUTH --private-key=\"$AUTHKEY\"";;
+    curl) AUTH="$AUTH --key \"$AUTHKEY\"";;
+  esac
 fi
 
 if [ -z $URL ]; then
@@ -135,26 +151,49 @@ else
 fi
 
 TMPFILE=$$
+echo
 
 if [ $GET -eq 0 ]; then
+  echo "[Building request]"
   openssl ocsp -issuer $ISSUER -cert "$CERT" -text -reqout $TMPFILE.req $NONCE $SIGN
+  echo
+  echo "[Sending request]"
   if [ $TIMEIT -eq 1 ]; then
-    time -f "%e" -o $TMPFILE.time wget -O $TMPFILE.resp --post-file=$TMPFILE.req -S --header "Content-type: application/ocsp-request" --ca-directory=. $AUTH $URL
+    case `detecthttpclient` in
+      wget) time -f "%e" -o $TMPFILE.time wget -O $TMPFILE.resp --post-file=$TMPFILE.req -S --header "Content-type: application/ocsp-request" --ca-directory=. $AUTH $URL;;
+      curl) time -f "%e" -o $TMPFILE.time curl -o $TMPFILE.resp --data-binary @$TMPFILE.req -v --header "Content-type: application/ocsp-request" --capath . $AUTH $URL;;
+    esac
   else
-    wget -O $TMPFILE.resp --post-file=$TMPFILE.req -S --header "Content-type: application/ocsp-request" --ca-directory=. $AUTH $URL
+    case `detecthttpclient` in
+      wget) wget -O $TMPFILE.resp --post-file=$TMPFILE.req -S --header "Content-type: application/ocsp-request" --ca-directory=. $AUTH $URL;;
+      curl) curl -o $TMPFILE.resp --data-binary @$TMPFILE.req -v --header "Content-type: application/ocsp-request" --capath . $AUTH $URL;;
+    esac
   fi
+  echo
+  echo "[Parsing result]"
   openssl ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . $NONCE
 else
   URL=`echo $URL | sed 's~/$~~'`
-  openssl ocsp -issuer $ISSUER -cert "$CERT" -reqout $TMPFILE.req $NONCE $SIGN
+  echo "[Building request]"
+  openssl ocsp -issuer $ISSUER -cert "$CERT" -text -reqout $TMPFILE.req $NONCE $SIGN
   REQOCSP=`openssl base64 -e < $TMPFILE.req | awk '{ printf("%s", $0); }'`
   echo "The OCSP request is: \"$REQOCSP\"."
+  echo
+  echo "[Sending request]"
   if [ $ESCAPE -eq 1 ]; then REQOCSP=`echo $REQOCSP | sed 's/\//%2F/g;s/+/%2B/g;s/=/%3D/g'`; fi
   if [ $TIMEIT -eq 1 ]; then
-    time -f "%e" -o $TMPFILE.time wget -O $TMPFILE.resp -S --ca-directory=. $AUTH "$URL"/"$REQOCSP"
+    case `detecthttpclient` in
+      wget) time -f "%e" -o $TMPFILE.time wget -O $TMPFILE.resp -S --ca-directory=. $AUTH "$URL"/"$REQOCSP";;
+      curl) time -f "%e" -o $TMPFILE.time curl -o $TMPFILE.resp -v --capath . $AUTH "$URL"/"$REQOCSP";;
+    esac
   else
-    wget -O $TMPFILE.resp -S --ca-directory=. $AUTH "$URL"/"$REQOCSP"
+    case `detecthttpclient` in
+      wget) wget -O $TMPFILE.resp -S --ca-directory=. $AUTH "$URL"/"$REQOCSP";;
+      curl) curl -o $TMPFILE.resp -v --capath . $AUTH "$URL"/"$REQOCSP";;
+    esac
   fi
+  echo
+  echo "[Parsing result]"
   openssl ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . $NONCE
 fi
 
