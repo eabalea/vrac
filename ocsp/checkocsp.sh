@@ -112,7 +112,11 @@ TMPFILE=$$
 
 if [ $GET -eq 0 ]; then
   openssl ocsp -issuer $ISSUER -cert "$CERT" -text -reqout $TMPFILE.req $NONCE $SIGN
-  time -f "%e" -o $TMPFILE.time wget -O $TMPFILE.resp --post-file=$TMPFILE.req -S --header "Content-type: application/ocsp-request" --ca-directory=. $AUTH $URL
+  if [ $TIMEIT -eq 1 ]; then
+    time -f "%e" -o $TMPFILE.time wget -O $TMPFILE.resp --post-file=$TMPFILE.req -S --header "Content-type: application/ocsp-request" --ca-directory=. $AUTH $URL
+  else
+    wget -O $TMPFILE.resp --post-file=$TMPFILE.req -S --header "Content-type: application/ocsp-request" --ca-directory=. $AUTH $URL
+  fi
   openssl ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . $NONCE
 else
   URL=`echo $URL | sed 's~/$~~'`
@@ -120,11 +124,15 @@ else
   REQOCSP=`openssl base64 -e < $TMPFILE.req | awk '{ printf("%s", $0); }'`
   echo "The OCSP request is: \"$REQOCSP\"."
   if [ $ESCAPE -eq 1 ]; then REQOCSP=`echo $REQOCSP | sed 's/\//%2F/g;s/+/%2B/g;s/=/%3D/g'`; fi
-  time -f "%e" -o $TMPFILE.time wget -O $TMPFILE.resp -S --ca-directory=. $AUTH "$URL"/"$REQOCSP"
+  if [ $TIMEIT -eq 1 ]; then
+    time -f "%e" -o $TMPFILE.time wget -O $TMPFILE.resp -S --ca-directory=. $AUTH "$URL"/"$REQOCSP"
+  else
+    wget -O $TMPFILE.resp -S --ca-directory=. $AUTH "$URL"/"$REQOCSP"
+  fi
   openssl ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . $NONCE
 fi
 
-if [ $TIMEIT = 1 ]; then
+if [ $TIMEIT -eq 1 ]; then
   echo -n "Time taken: "
   cat $TMPFILE.time
 fi
