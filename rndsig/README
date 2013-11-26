@@ -1,0 +1,21 @@
+This is a short guide to start using rndsig.
+
+ - Compile and install it, by running the following:
+   ./configure; make; su; make install
+ - Create a file containing all the quotes you'd like rndsig to use, one at 
+   each line.
+ - Create a file in your home directory, named .rndsigrc. This file will
+   contain the following keywords:
+     Template  followed by the template file   
+     Quotes    followed by the quotes file
+     Output    followed by the output file
+     InsertDashes  followed by a boolean value (yes, no, true, false, 1, 0
+                   are recognized)
+     Order     followed by one of {Regular, Reverse, Random}
+ - Create the output fifo:
+     mkfifo "output file"
+ - Run the executable
+ 
+Sorry for this very (too) short guide, I'll write a bigger one sometime.
+
+Erwann ABALEA <erwann@abalea.com>
