@@ -1,0 +1,191 @@
+salut, 
+
+voici déja un long moment que je n'avais pas posté ici :=) 
+
+le CRC d'un mot ou groupe d'octets est en fait le RESTE 
+de la division de ce mot ou groupe d'octet par un polynome 
+
+pour ce qui nous intéresse ici, le polynome utilisé est dit 
+polynome de Haming et est égal à : 
+
+P(x)= x^5 + x^2 + 1 
+
+soit 100101 
+
+
+
+voici un exemple, on peut prendre un n° de série quelconque 
+et calculer son CRC, mais pour commencer, faisons plus simple 
+en calculant le CRC du mot trouvé en <9C8> sur une carte récente 
+
+on a : 
+
+<9C8>...1F F4 0F B0 
+
+ici 1F F4 correspond à l'adresse ADL, CRC compris (et vérifié) 
+
+donc si le CRC est correct, il doit etre égal à 0 
+
+en d'autres termes, le reste de la division de 
+
+1F F4 par 100101 = 0 
+
+
+le polynome est de degres 5 donc le CRC sera sur 5 bits 
+
+d'autre part, il faut noter que pour la division, la soustraction 
+est particulière car on utilise une algèbre MODULO 2 
+(on ne tient donc pas compte des retenues) 
+
+voici le détail de cette division, sachant que 
+
+
+
+1F F4 = 0001 1111 1111 0100 
+
+
+
+         Code:
+
+
+         0001 1111 1111 0100  | 100101
+         0000 00.. .... ....  |-------------
+         -------.. .... ....  | 00011100100
+          001 111. .... ....  |
+          000 000. .... ....  |
+          -------. .... ....  |
+           01 1111 .... ....  |
+           00 0000 .... ....  |
+           ------- .... ....  |
+            1 1111 1... ....  |
+            1 0010 1... ....  |
+            --------... ....  |
+              1101 01.. ....  |
+              1001 01.. ....  |
+              -------.. ....  |
+               100 001. ....  |
+               100 101. ....  |
+               -------. ....  |
+                00 1001 ....  |
+                00 0000 ....  |
+                ------- ....  |
+                 0 1001 0...  |
+                 0 0000 0...  |
+                 --------...  |
+                   1001 01..  |
+                   1001 01..  |
+                   -------..  |
+                    000 000.  |
+                    000 000.  |
+                    -------.  |
+                     00 0000  |
+                     00 0000  |
+                     -------  |
+                      0 0000  |     
+
+
+
+
+
+
+
+
+Le reste est ici 00000 donc le CRC de 1F F4 est correct ! 
+
+
+Pour générer un n° de série cohérent (cad qui vérifie le CRC) voici 
+comment procéder : 
+
+on sait que le n° de série est de la forme : 
+
+xxxx xxxx xxxC CCCC avec x = bits du n° de série, C = bits du CRC 
+
+
+
+
+il faut dès le début, cad avant la division, mettre C à 0 
+
+donc le n° de série avant CRC sera de la forme xxxx xxxx xxx0 0000 
+
+
+ensuite faire la division de ce n° de série (avec ce que l'on veut pour x) 
+
+par 100101 
+
+puis, récupérer les 5 bits du reste, et les injecter à la place de C CCCC 
+(donc à la place des 00000) 
+
+
+
+imaginons que le reste trouvé soit 01001, 
+
+alors le n° de série vérifiant le CRC sera : xxxx xxxx xxx0 1001 
+
+
+
+si on fait la division de xxxx xxxx xxx0 1001 par 100101 alors 
+
+le reste sera 00000 ce qui prouvera que le CRC est correct !!! 
+
+
+j'ai fait un prog "CRC G-nerator" qui permet entre autre de génèrer aléatoirement 
+des n° de série vérifiant le CRC 
+
+je le rendrais dispo bientot, à moins que je sorte geZeroII avant (qui l'intègrera) :) 
+
+
+
+en attendant, bon courage avec les divisions à la main !!!! 
+
+
+
+A++ 
+;) 
+
+
+
+
+
+               
+isk
+Chercheur
+
+
+Inscrit: Jun 27, 2001
+Messages: 16
+                             Posté le: 2001-07-22 20:44   
+
+                           en guise d'explication... ça ira??? 
+                                    Code:
+
+                                    BYTE cce(BYTE buf[],int lgbuf)
+                                      {
+                                        BYTE ccr,tampon;
+                                        int  i,j;
+
+                                        buf[lgbuf-1] &= 0xe0;
+                                        ccr = buf[0] / 8 ;
+                                        j=0 ;
+                                        while ( j<lgbuf )
+                                          {
+                                            tampon = buf[j] ;
+                                            if (j==0)
+                                              {
+                                                tampon *= 32 ;
+                                                i = 5 ;
+                                              }
+                                            else i=0;
+
+                                            do
+                                              {
+                                                ccr *= 2 ;
+                                                if ( (tampon & 0x80) == 0x80 ) ccr ++;
+                                                tampon *= 2 ;
+                                                if ( (ccr & 0x20)== 0x20 ) ccr = ccr ^ 0x25;
+                                                i++;
+                                              }
+                                            while ( i < 8 ) ;
+                                            j++;
+                                          }
+                                        return(ccr) ;
+                                      }
