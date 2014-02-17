@@ -203,7 +203,7 @@ fi
 
 echo
 echo "[Parsing result]"
-if [ -z "$ISSUER" ]; then
+if [ -z "$SERIAL" ]; then
   openssl ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . -VAfile $ISSUER $NONCE
 else
   openssl ocsp -issuer $ISSUER -serial "$SERIAL" -respin $TMPFILE.resp -text -CApath . -VAfile $ISSUER $NONCE
