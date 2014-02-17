@@ -12,7 +12,6 @@ ESCAPE=0
 #  - have a more precise "time"
 #  - be able to add any extension, critical or not
 #  - be able to request for several certificates at once, from the same CA or not
-#  - be able to request for an arbitrary serial number
 
 detectgetopt () {
   getopt -T > /dev/null 2>&1
@@ -44,6 +43,8 @@ displayhelp () {
   echo "  -t|--time"
   echo "  -u|--url <OCSP URL>"
   echo "  -e|--escape"
+  echo "  -i|--issuer <file> (prefix by 0x for an hex number, else decimal)"
+  echo "  -s|--serial <serialnumber>"
 
   if [ `detectgetopt` = "GNU" ]; then
     echo "  --signer <file>"
@@ -60,7 +61,7 @@ displayhelp () {
 
 case `detectgetopt` in
   GNU)
-    TEMP=`getopt -o gpc:kntu:eh --long get,post,cert:,keep,nonce,time,url:,escape,signer:,signkey:,authcert:,authkey:,help -n 'checkocsp.sh' -- "$@"`
+    TEMP=`getopt -o gpc:kntu:ei:s:h --long get,post,cert:,keep,nonce,time,url:,escape,signer:,signkey:,authcert:,authkey:,issuer:,serial:,help -n 'checkocsp.sh' -- "$@"`
     ;;
   BSD)
     TEMP=`getopt gpc:kntu:eh $*`
@@ -79,6 +80,8 @@ while true ; do
     -t|--time) TIMEIT=1; shift;;
     -u|--url) URL=$2; shift 2;;
     -e|--escape) ESCAPE=1; shift;;
+    -i|--issuer) ISSUER=$2; shift 2;;
+    -s|--serial) SERIAL=$2; shift 2;;
     --signer) SIGNER=$2; shift 2;;
     --signkey) SIGNKEY=$2; shift 2;;
     --authcert) AUTHCERT=$2; shift 2;;
@@ -89,9 +92,11 @@ while true ; do
   esac
 done
 
-if [ -z $CERT ]; then
-  echo "I want a certificate to check."
-  exit
+if [ -z "$CERT" ]; then
+  if [ -z "$URL" -o -z "$SERIAL" -o -z "$ISSUER" ]; then
+    echo "I want either a certificate to check, or all the URL+issuer+serial parameters."
+    exit
+  fi
 fi
 
 if [ ! -z "$SIGNER" -a ! -z "$SIGNKEY" ]; then
@@ -117,9 +122,9 @@ if [ ! -z "$AUTHKEY" ]; then
   esac
 fi
 
-if [ -z $URL ]; then
+if [ -z "$URL" ]; then
   URL=`openssl x509 -text -noout -in "$CERT" | grep "OCSP - URI:" | sed 's/^ *OCSP - URI://'`
-  if [ -z $URL ]; then
+  if [ -z "$URL" ]; then
     echo "No OCSP URL in the proposed certificate."
     exit
   else
@@ -142,21 +147,28 @@ if [ -z "$HOST" ]; then
   exit
 fi
 
-ISSUER=`openssl x509 -issuer_hash -noout -in "$CERT"`.0
-if [ ! -f $ISSUER ]; then
-  echo "Issuer certificate not found ($ISSUER)."
-  exit
-else
-  echo "The issuer is found in \"$ISSUER\""
+if [ -z "$ISSUER" ]; then
+  ISSUER=`openssl x509 -issuer_hash -noout -in "$CERT"`.0
+  if [ ! -f "$ISSUER" ]; then
+    echo "Issuer certificate not found ($ISSUER)."
+    exit
+  else
+    echo "The issuer is found in \"$ISSUER\""
+  fi
 fi
 
 TMPFILE=$$
 echo
 
-if [ $GET -eq 0 ]; then
-  echo "[Building request]"
+echo "[Building request]"
+if [ -z "$SERIAL" ]; then
   openssl ocsp -issuer $ISSUER -cert "$CERT" -text -reqout $TMPFILE.req $NONCE $SIGN
-  echo
+else
+  openssl ocsp -issuer $ISSUER -serial "$SERIAL" -text -reqout $TMPFILE.req $NONCE $SIGN
+fi
+echo
+
+if [ $GET -eq 0 ]; then
   echo "[Sending request]"
   if [ $TIMEIT -eq 1 ]; then
     case `detecthttpclient` in
@@ -171,8 +183,6 @@ if [ $GET -eq 0 ]; then
   fi
 else
   URL=`echo $URL | sed 's~/$~~'`
-  echo "[Building request]"
-  openssl ocsp -issuer $ISSUER -cert "$CERT" -text -reqout $TMPFILE.req $NONCE $SIGN
   REQOCSP=`openssl base64 -e < $TMPFILE.req | awk '{ printf("%s", $0); }'`
   echo "The OCSP request is: \"$REQOCSP\"."
   echo
@@ -193,7 +203,11 @@ fi
 
 echo
 echo "[Parsing result]"
-openssl ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . -VAfile $ISSUER $NONCE
+if [ -z "$ISSUER" ]; then
+  openssl ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . -VAfile $ISSUER $NONCE
+else
+  openssl ocsp -issuer $ISSUER -serial "$SERIAL" -respin $TMPFILE.resp -text -CApath . -VAfile $ISSUER $NONCE
+fi
 
 if [ $TIMEIT -eq 1 ]; then
   echo -n "Time taken: "
