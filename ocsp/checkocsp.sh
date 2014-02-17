@@ -64,7 +64,7 @@ case `detectgetopt` in
     TEMP=`getopt -o gpc:kntu:ei:s:h --long get,post,cert:,keep,nonce,time,url:,escape,signer:,signkey:,authcert:,authkey:,issuer:,serial:,help -n 'checkocsp.sh' -- "$@"`
     ;;
   BSD)
-    TEMP=`getopt gpc:kntu:eh $*`
+    TEMP=`getopt gpc:kntu:ei:s:h $*`
     ;;
 esac
 
