@@ -14,7 +14,7 @@ ESCAPE=0
 #  - be able to request for several certificates at once, from the same CA or not
 #  - be able to request for an arbitrary serial number
 
-function detectgetopt () {
+detectgetopt () {
   getopt -T > /dev/null 2>&1
   if [ $? -eq 4 ]; then
     GETOPTVARIANT=GNU
@@ -24,7 +24,7 @@ function detectgetopt () {
   echo $GETOPTVARIANT
 }
 
-function detecthttpclient () {
+detecthttpclient () {
   for i in wget curl; do
     which $i > /dev/null
     if [ $? -eq 0 ]; then
@@ -34,7 +34,7 @@ function detecthttpclient () {
   done
 }
 
-function displayhelp () {
+displayhelp () {
   echo "Options:"
   echo "  -g|--get"
   echo "  -p|--post (by default)"
@@ -45,14 +45,14 @@ function displayhelp () {
   echo "  -u|--url <OCSP URL>"
   echo "  -e|--escape"
 
-  if [ `detectgetopt` == "GNU" ]; then
+  if [ `detectgetopt` = "GNU" ]; then
     echo "  --signer <file>"
     echo "  --signkey <file>"
     echo "  --authcert <file>"
     echo "  --authkey <file>"
   fi
 
-  if [ `detectgetopt` == "BSD" ]; then
+  if [ `detectgetopt` = "BSD" ]; then
     echo
     echo "You're using a BSD-style getopt, so long options aren't accessible."
   fi
@@ -169,9 +169,6 @@ if [ $GET -eq 0 ]; then
       curl) curl -o $TMPFILE.resp --data-binary @$TMPFILE.req -v --header "Content-type: application/ocsp-request" --capath . $AUTH $URL;;
     esac
   fi
-  echo
-  echo "[Parsing result]"
-  openssl ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . $NONCE
 else
   URL=`echo $URL | sed 's~/$~~'`
   echo "[Building request]"
@@ -192,10 +189,11 @@ else
       curl) curl -o $TMPFILE.resp -v --capath . $AUTH "$URL"/"$REQOCSP";;
     esac
   fi
-  echo
-  echo "[Parsing result]"
-  openssl ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . $NONCE
 fi
+
+echo
+echo "[Parsing result]"
+openssl ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . -VAfile $ISSUER $NONCE
 
 if [ $TIMEIT -eq 1 ]; then
   echo -n "Time taken: "
