@@ -8,6 +8,9 @@ AUTH=""
 TIMEIT=0
 ESCAPE=0
 
+# Here you can change the path to your favorite openssl command line tool
+OPENSSL="openssl"
+
 # TODO:
 #  - have a more precise "time"
 #  - be able to add any extension, critical or not
@@ -162,9 +165,9 @@ echo
 
 echo "[Building request]"
 if [ -z "$SERIAL" ]; then
-  openssl ocsp -issuer $ISSUER -cert "$CERT" -text -reqout $TMPFILE.req $NONCE $SIGN
+  $OPENSSL ocsp -issuer $ISSUER -cert "$CERT" -text -reqout $TMPFILE.req $NONCE $SIGN
 else
-  openssl ocsp -issuer $ISSUER -serial "$SERIAL" -text -reqout $TMPFILE.req $NONCE $SIGN
+  $OPENSSL ocsp -issuer $ISSUER -serial "$SERIAL" -text -reqout $TMPFILE.req $NONCE $SIGN
 fi
 echo
 
@@ -183,7 +186,7 @@ if [ $GET -eq 0 ]; then
   fi
 else
   URL=`echo $URL | sed 's~/$~~'`
-  REQOCSP=`openssl base64 -e < $TMPFILE.req | awk '{ printf("%s", $0); }'`
+  REQOCSP=`$OPENSSL base64 -e < $TMPFILE.req | awk '{ printf("%s", $0); }'`
   echo "The OCSP request is: \"$REQOCSP\"."
   echo
   echo "[Sending request]"
@@ -204,9 +207,9 @@ fi
 echo
 echo "[Parsing result]"
 if [ -z "$SERIAL" ]; then
-  openssl ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . -VAfile $ISSUER $NONCE
+  $OPENSSL ocsp -issuer $ISSUER -cert "$CERT" -respin $TMPFILE.resp -text -CApath . -VAfile $ISSUER $NONCE
 else
-  openssl ocsp -issuer $ISSUER -serial "$SERIAL" -respin $TMPFILE.resp -text -CApath . -VAfile $ISSUER $NONCE
+  $OPENSSL ocsp -issuer $ISSUER -serial "$SERIAL" -respin $TMPFILE.resp -text -CApath . -VAfile $ISSUER $NONCE
 fi
 
 if [ $TIMEIT -eq 1 ]; then
