@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "utils.h"
 
 #define EXPECTEDRESULT "746865206b696420646f6e277420706c6179"
 
