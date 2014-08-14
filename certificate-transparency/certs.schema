@@ -1,12 +1,14 @@
 CREATE TABLE certs (
   entryid INTEGER,
   leafcert VARCHAR2,
+  certtype INTEGER,
   issuerid INTEGER
 );
 
 CREATE TABLE cacerts (
   certid INTEGER,
+  issuerid INTEGER,
   certdata VARCHAR2,
-  issuerid INTEGER
+  certhash VARCHAR2
 );
 
