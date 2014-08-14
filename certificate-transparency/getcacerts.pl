@@ -147,9 +147,55 @@ sub decodeMerkleTreeLeaf {
   return %res;
 }
 
+sub decodecertificatechain {
+  my ($content) = @_;
+  my @res;
+  my ($outlen, $len, $v1, $v2);
+
+  ($v1, $v2) = unpack("Cn", $$content);
+  substr $$content, 0, 3, "";
+  $outlen = ($v1<<16)+$v2;
+
+  while (length($$content) > 0) {
+    ($v1, $v2) = unpack("Cn", $$content);
+    substr $$content, 0, 3, "";
+    $len = ($v1<<16)+$v2;
+    push(@res, substr($$content, 0, $len));
+    substr $$content, 0, $len, "";
+  }
+
+  return @res;
+}
+
+sub decodeprecertificatechain {
+  my ($content) = @_;
+  my @res;
+  my ($outlen, $len, $v1, $v2);
+
+  ($v1, $v2) = unpack("Cn", $$content);
+  substr $$content, 0, 3, "";
+  $len = ($v1<<16)+$v2;
+  push(@res, substr($$content, 0, $len));
+  substr $$content, 0, $len, "";
+
+  ($v1, $v2) = unpack("Cn", $$content);
+  substr $$content, 0, 3, "";
+  $outlen = ($v1<<16)+$v2;
+
+  while (length($$content) > 0) {
+    ($v1, $v2) = unpack("Cn", $$content);
+    substr $$content, 0, 3, "";
+    $len = ($v1<<16)+$v2;
+    push(@res, substr($$content, 0, $len));
+    substr $$content, 0, $len, "";
+  }
+
+  return @res;
+}
+
 sub fetchdecodedentry {
   my ($entrynumber) = @_;
-  my ($response, $entry, %decodedentry, $content);
+  my ($response, $entry, %decodedentry, $content, @res2);
 
   $response =
   $ua->get("$CTLOG/ct/v1/get-entries?start=$entrynumber&end=$entrynumber");
@@ -159,6 +205,12 @@ sub fetchdecodedentry {
   }
   $content = decode_base64($entry->{entries}[0]{leaf_input});
   %decodedentry = decodeMerkleTreeLeaf(\$content);
+  $content = decode_base64($entry->{entries}[0]{extra_data});
+  given ($decodedentry{timestamped_entry}{entry_type}) {
+    when 0 { @res2 = decodecertificatechain(\$content); $decodedentry{certchain} = \@res2; }
+    when 1 { @res2 = decodeprecertificatechain(\$content); $decodedentry{precertchain} = \@res2; }
+  }
+
   return %decodedentry;
 }
 
@@ -248,17 +300,30 @@ $largestentrynumber = getlargestlocalentry();
 $logentries = fetchnumberofentries();
 print "Log has $logentries entries, local DB goes up to $largestentrynumber\n";
 
+print "Entry $boringentry\n";
 my $entry = fetchentry($boringentry);
 print to_json($entry, { pretty => 1 });
 
+print "Entry $interestingentry\n";
 my $entry = fetchentry($interestingentry);
 print to_json($entry, { pretty => 1 });
 
+print "Entry $boringentry\n";
 my %entry = fetchdecodedentry($boringentry);
 print to_json(\%entry, { pretty => 1 });
 
+print "Entry $interestingentry\n";
 my %entry = fetchdecodedentry($interestingentry);
 print to_json(\%entry, { pretty => 1 });
+
+print "precertchain[0]\n";
+print encode_base64($entry{precertchain}[0]), "\n";
+
+print "precertchain[1]\n";
+print encode_base64($entry{precertchain}[1]), "\n";
+
+print "tbs_certificate\n";
+print encode_base64($entry{timestamped_entry}{signed_entry}{tbs_certificate}), "\n";
 
 # Read greatest entry from DB.certs
 # Ask for greatest entry from log

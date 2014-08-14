@@ -2,6 +2,7 @@ CREATE TABLE certs (
   entryid INTEGER,
   leafcert VARCHAR2,
   certtype INTEGER,
+  tbscert VARCHAR2,
   issuerid INTEGER
 );
 
