@@ -1,0 +1,12 @@
+CREATE TABLE certs (
+  entryid INTEGER,
+  leafcert VARCHAR2,
+  issuerid INTEGER
+);
+
+CREATE TABLE cacerts (
+  certid INTEGER,
+  certdata VARCHAR2,
+  issuerid INTEGER
+);
+
