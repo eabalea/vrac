@@ -2,6 +2,7 @@
 
 use strict;
 
+use BerkeleyDB;
 use JSON;
 use LWP;
 use MIME::Base64;
@@ -10,23 +11,37 @@ use Digest;
 use Switch 'Perl6';
 
 my $ua = LWP::UserAgent->new;
-my $CTLOG = "http://ct.googleapis.com/aviator";
+#my $CTLOG = "http://ct.googleapis.com/aviator";
+my $CTLOG = "http://ct.googleapis.com/rocketeer";
 my $sha256 = Digest->new("SHA-256");
 my ($db, %cacerts, $largestentrynumber, $logentries);
 my %db;
 
+my $usetiedDB = 1;
+
 my $boringentry = 1;
-my $interestingentry = 4028324;
+#my $interestingentry = 4028324;
+#my $interestingentry = 3263390;
+#my $interestingentry = 3159718;
+my $interestingentry = 3217760;
 
 sub init {
-  #$db = DBI->connect("DBI:SQLite:dbname=certs.db");
-  #tie %db, 
-  $db = DBI->connect("DBI:SQLite:dbname=certs.db");
+  if (!$usetiedDB) {
+    $db = DBI->connect("DBI:SQLite:dbname=certs.db");
+  } else {
+    tie %db, "BerkeleyDB::Hash",
+        -Filename => "certs2.db",
+        -Flags => DB_CREATE;
+  }
   %cacerts = getcacerts();
 }
 
 sub deinit {
-  $db->disconnect;
+  if (!$usetiedDB) {
+    $db->disconnect;
+  } else {
+    untie %db;
+  }
 }
 
 sub fetchroots {
@@ -236,11 +251,15 @@ sub getlargestlocalentry {
   my $nb= -1;
   my $nb2;
 
-  $sth = $db->prepare("SELECT distinct entryid from certs order by entryid desc limit 1");
-  $sth->execute();
-  $nb2 = $sth->fetchrow_array;
-  $nb = $nb2 if (defined $nb2);
-  $sth->finish;
+  if (!$usetiedDB) {
+    $sth = $db->prepare("SELECT distinct entryid from certs order by entryid desc limit 1");
+    $sth->execute();
+    $nb2 = $sth->fetchrow_array;
+    $nb = $nb2 if (defined $nb2);
+    $sth->finish;
+  } else {
+    $nb = $db{largestentryid} if defined $db{largestentryid};
+  }
   return $nb;
 }
 
@@ -248,35 +267,84 @@ sub getcacerts {
   my $sth;
   my %cacerts;
   my ($certhash, $certid);
+  my $nb;
 
   # Retourne un hash hashé->certid
-  $sth = $db->prepare("SELECT certhash, certid from cacerts");
-  $sth->execute();
-  while (($certhash, $certid) = $sth->fetchrow_array)
-  {
-    $cacerts{$certhash} = $certid;
+  if (!$usetiedDB) {
+    $sth = $db->prepare("SELECT certhash, certid from cacerts");
+    $sth->execute();
+    while (($certhash, $certid) = $sth->fetchrow_array)
+    {
+      $cacerts{$certhash} = $certid;
+    }
+    $sth->finish;
+  } else {
+    foreach $nb (1 .. $db{largestcacert}) {
+      $cacerts{$db{"cacert:".$nb.":hash"}} = $nb if defined $db{"cacert:".$nb.":hash"};
+    }
   }
-  $sth->finish;
   return %cacerts;
 }
 
 sub importrootcert {
   my ($cert) = @_;
+  my $certbinary;
   my $sth;
   my $dgst;
   my $certid = 0;
   my $requestedcertid;
 
-  $dgst = $sha256->add(decode_base64($cert))->hexdigest;
+  $certbinary = decode_base64($cert);
+  $dgst = $sha256->add($certbinary)->hexdigest;
 
-  $sth = $db->prepare("SELECT certid from cacerts order by certid desc limit 1");
-  $sth->execute();
-  $requestedcertid = $sth->fetchrow_array;
-  $certid = $requestedcertid if defined $requestedcertid;
-  $certid++;
-  $sth = $db->prepare("INSERT into cacerts(certid, issuerid, certdata, certhash) values (?, ?, ?, ?)");
-  $sth->execute($certid, $certid, $cert, $dgst);
-  $sth->finish;
+  if (!$usetiedDB) {
+    $sth = $db->prepare("SELECT certid from cacerts order by certid desc limit 1");
+    $sth->execute();
+    $requestedcertid = $sth->fetchrow_array;
+    $certid = $requestedcertid if defined $requestedcertid;
+    $certid++;
+    $sth = $db->prepare("INSERT into cacerts(certid, issuerid, certdata, certhash) values (?, ?, ?, ?)");
+    $sth->execute($certid, $certid, $certbinary, $dgst);
+    $sth->finish;
+  } else {
+    $certid = $db{largestcacert} if defined $db{largestcacert};
+    $certid++;
+    $db{"cacert:".$certid.":hash"} = $dgst;
+    $db{"cacert:".$certid.":issuerid"} = $certid;
+    $db{"cacert:".$certid.":certdata"} = $certbinary;
+    $db{largestcacert} = $certid;
+  }
+  return $certid;
+}
+
+sub importcacert {
+  my ($cert, $issuerid) = @_;
+  my $certbinary;
+  my $sth;
+  my $dgst;
+  my $certid = 0;
+  my $requestedcertid;
+
+  $certbinary = decode_base64($cert);
+  $dgst = $sha256->add($certbinary)->hexdigest;
+
+  if (!$usetiedDB) {
+    $sth = $db->prepare("SELECT certid from cacerts order by certid desc limit 1");
+    $sth->execute();
+    $requestedcertid = $sth->fetchrow_array;
+    $certid = $requestedcertid if defined $requestedcertid;
+    $certid++;
+    $sth = $db->prepare("INSERT into cacerts(certid, issuerid, certdata, certhash) values (?, ?, ?, ?)");
+    $sth->execute($certid, $issuerid, $certbinary, $dgst);
+    $sth->finish;
+  } else {
+    $certid = $db{largestcacert} if defined $db{largestcacert};
+    $certid++;
+    $db{"cacert:".$certid.":hash"} = $dgst;
+    $db{"cacert:".$certid.":issuerid"} = $issuerid;
+    $db{"cacert:".$certid.":certdata"} = $certbinary;
+    $db{largestcacert} = $certid;
+  }
   return $certid;
 }
 
@@ -293,27 +361,89 @@ sub updateroots {
   }
 }
 
+sub importentry {
+  my (%entry) = @_;
+  my $entrytype = 0;
+  my @certchain;
+  my $finalcert;
+  my $cert;
+
+  # Si entrytype = 0
+  #  on essaye de remplacer chaque élément de certchain par le certid
+  #    s'il est connu, on insère les inconnus restants dans la base et
+  #    le hash en mémoire
+  #  on insère certificate dans la base, avec son issuerid
+  # Si entrytype = 1
+  #$content = decode_base64($entry->{entries}[0]{leaf_input});
+  #%decodedentry = decodeMerkleTreeLeaf(\$content);
+  #$content = decode_base64($entry->{entries}[0]{extra_data});
+  given ($entry{timestamped_entry}{entry_type}) {
+    when 0 { 
+      $entrytype = 0;
+      $finalcert = $entry{timestamped_entry}{signed_entry}{certificate};
+      @certchain = reverse @{$entry{certchain}};
+      }
+    when 1 { $entrytype = 1; }
+  }
+
+  foreach $cert (@certchain) {
+    my $dgst = $sha256->add(decode_base64($cert))->hexdigest;
+    if (defined $cacerts{$dgst}) {
+      $cert = $cacerts{$dgst};
+    } else {
+    }
+  }
+  
+  if (!$usetiedDB) {
+  } else {
+  }
+}
+
 print "Initializing stuff\n";
 init();
 
 print "Updating list of root certificates\n";
 updateroots();
 
+#$largestentrynumber = $db{largestcacert};
+#my $i;
+#foreach $i (0 .. $largestentrynumber) {
+#  print "CACert: $i\n";
+#  print $db{"cacert:".$i.":certdata"}, "\n\n";
+#}
+print "52\n";
+print $db{"cacert:52:hash"}, "\n";
+print encode_base64($db{"cacert:52:certdata"}), "\n";
+
+print "58\n";
+print $db{"cacert:58:hash"}, "\n";
+print encode_base64($db{"cacert:58:certdata"}), "\n";
+
 $largestentrynumber = getlargestlocalentry();
 $logentries = fetchnumberofentries();
 print "Log has $logentries entries, local DB goes up to $largestentrynumber\n";
-
-print "Entry $boringentry\n";
-my $entry = fetchentry($boringentry);
-print to_json($entry, { pretty => 1 });
-
-print "Entry $interestingentry\n";
-my $entry = fetchentry($interestingentry);
-print to_json($entry, { pretty => 1 });
-
-print "Entry $boringentry\n";
-my %entry = fetchdecodedentry($boringentry);
+#
+print "Inserting entry #".($largestentrynumber+1)."\n";
+my %entry = fetchdecodedentry($largestentrynumber+1);
 print to_json(\%entry, { pretty => 1 });
+print "certchain[0]\n";
+print encode_base64($entry{certchain}[0]), "\n";
+print "certchain[1]\n";
+print encode_base64($entry{certchain}[1]), "\n";
+importentry(%entry);
+
+
+#print "Entry $boringentry\n";
+#my $entry = fetchentry($boringentry);
+#print to_json($entry, { pretty => 1 });
+
+#print "Entry $interestingentry\n";
+#my $entry = fetchentry($interestingentry);
+#print to_json($entry, { pretty => 1 });
+
+#print "Entry $boringentry\n";
+#my %entry = fetchdecodedentry($boringentry);
+#print to_json(\%entry, { pretty => 1 });
 
 print "Entry $interestingentry\n";
 my %entry = fetchdecodedentry($interestingentry);
@@ -327,6 +457,14 @@ print encode_base64($entry{precertchain}[1]), "\n";
 
 print "tbs_certificate\n";
 print encode_base64($entry{timestamped_entry}{signed_entry}{tbs_certificate}), "\n";
+
+print "certificate\n";
+print encode_base64($entry{timestamped_entry}{signed_entry}{certificate}), "\n";
+print "certchain[0]\n";
+print encode_base64($entry{certchain}[0]), "\n";
+print "certchain[1]\n";
+print encode_base64($entry{certchain}[1]), "\n";
+
 
 # Read greatest entry from DB.certs
 # Ask for greatest entry from log
