@@ -13,11 +13,14 @@ my $ua = LWP::UserAgent->new;
 my $CTLOG = "http://ct.googleapis.com/aviator";
 my $sha256 = Digest->new("SHA-256");
 my ($db, %cacerts, $largestentrynumber, $logentries);
+my %db;
 
 my $boringentry = 1;
 my $interestingentry = 4028324;
 
 sub init {
+  #$db = DBI->connect("DBI:SQLite:dbname=certs.db");
+  #tie %db, 
   $db = DBI->connect("DBI:SQLite:dbname=certs.db");
   %cacerts = getcacerts();
 }
