@@ -46,8 +46,8 @@ displayhelp () {
   echo "  -t|--time"
   echo "  -u|--url <OCSP URL>"
   echo "  -e|--escape"
-  echo "  -i|--issuer <file> (prefix by 0x for an hex number, else decimal)"
-  echo "  -s|--serial <serialnumber>"
+  echo "  -i|--issuer <file>"
+  echo "  -s|--serial <serialnumber> (prefix by 0x for an hex number, else decimal)"
 
   if [ `detectgetopt` = "GNU" ]; then
     echo "  --signer <file>"
