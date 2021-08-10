@@ -1,0 +1,16 @@
+# Specify filepatterns you want git to ignore.
+
+rndsig/rndsig
+rndsig/rndsig.o
+rndsig/missing
+rndsig/install-sh
+rndsig/depcomp
+rndsig/configure
+rndsig/config.status
+rndsig/config.log
+rndsig/autom4te.cache
+rndsig/aclocal.m4
+rndsig/Makefile
+rndsig/.deps
+rndsig/compile
+rndsig/Makefile.in
