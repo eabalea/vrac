@@ -408,7 +408,7 @@ void readrcfile(void)
 
       /* Now we've got something interesting to read */
       default : 
-        /* Is is a 'Template' line? */
+        /* Is it a 'Template' line? */
         if (!strncasecmp(buf, "Template", strlen("Template")))
         {
           strncpy(template, buf+strlen("Template"), MAXNAMLEN);
@@ -458,13 +458,13 @@ void readrcfile(void)
           break;
         }
 
-	/* Is it a 'Timer' line? */
-	if (!strncasecmp(buf, "Timer", strlen("Timer")))
-	{
-	  timer = integervalue(buf+strlen("Timer"));
-	  if (timer < 1) timer = 1;
-	  break;
-	}
+    	/* Is it a 'Timer' line? */
+	    if (!strncasecmp(buf, "Timer", strlen("Timer")))
+	    {
+	      timer = integervalue(buf+strlen("Timer"));
+	      if (timer < 1) timer = 1;
+	      break;
+	    }
         
         /* None of the above, just issue a warning */
         fprintf(stderr, "Warning, line '%s' ignored.\n", buf);
