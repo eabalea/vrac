@@ -24,9 +24,11 @@ int calcmaxlen(wchar_t *mots[], int nbmots)
 
 char *horizontale(int maxlen)
 {
-  char ligne[1024] = "";
+  char* ligne = NULL;
   char elemcolonne[100] = "";
   int i;
+
+  ligne = malloc(1024);
 
   strcat(ligne, "+");
 
@@ -55,7 +57,6 @@ void printmot(int maxlen, wchar_t *mot)
 
 int main(int argc, char **argv)
 {
-
   wchar_t *mots[25] = {
     L"Appel d'offres",
     L"Price list",
@@ -88,10 +89,11 @@ int main(int argc, char **argv)
       tailledepart = 25,
       maxlen,
       seed = 0;
+  char *horizligne = NULL;
 
   if (!setlocale(LC_CTYPE, ""))
   {
-    fprintf(stderr, "Can't set the specified locale. Check LANG, ,LC_CTYPE, LC_ALL.\n");
+    fprintf(stderr, "Can't set the specified locale. Check LANG, LC_CTYPE, LC_ALL.\n");
     return 1;
   }
 
@@ -109,7 +111,10 @@ int main(int argc, char **argv)
   /* Calcul du plus grand mot de la liste */
   maxlen = calcmaxlen(mots, tailledepart);
 
-  printf("%s\n", horizontale(maxlen));
+  /* On veut une ligne horizontale propre */
+  horizligne = horizontale(maxlen);
+
+  printf("%s\n", horizligne);
 
   /* Génération de la grille */
   while (taille)
@@ -117,9 +122,14 @@ int main(int argc, char **argv)
     tirage=rand()%taille;
     printmot(maxlen, mots[tirage]);
     if (!((taille-1)%5))
-      printf("|\n%s\n", horizontale(maxlen));
+      printf("|\n%s\n", horizligne);
     memmove(mots+tirage, mots+tirage+1, sizeof(char*)*(tailledepart-tirage+1));
     taille--;
   }
+
+  free(horizligne);
+  horizligne = NULL;
+
+  return EXIT_SUCCESS;
 }
 
