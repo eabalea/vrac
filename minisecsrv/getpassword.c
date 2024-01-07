@@ -11,7 +11,7 @@
  * If this is '\0'; none is used.
  * \return 0 on success or -1 on error.
  */
-int getpassword(const char* prompt, unsigned char** buffer, unsigned int* sz, char replacement)
+int getpassword(const char* prompt, char** buffer, int* sz, char replacement)
 {
   const char* default_prompt = "Passphrase: ";
   struct termios tty_attr;
@@ -31,7 +31,7 @@ int getpassword(const char* prompt, unsigned char** buffer, unsigned int* sz, ch
    */
   if (prompt != NULL)
     fprintf(stderr, "%s", prompt);
-  else if (prompt != "")
+  else
     fprintf(stderr, "%s", default_prompt);
 	
   /*

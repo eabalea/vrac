@@ -6,6 +6,7 @@ static char rcsid[] = "$Id: config.c,v 1.3 2013/03/28 15:48:06 eabalea Exp $";
 #include <getopt.h>
 #include <dirent.h>
 #include <pwd.h>
+#include <ctype.h>
 #include <openssl/evp.h>
 #include "utils.h"
 #include "config.h"
@@ -17,7 +18,7 @@ static char rcsid[] = "$Id: config.c,v 1.3 2013/03/28 15:48:06 eabalea Exp $";
 /******
  * Remove any blank space characters, at the left and right of the string.
  ******/
-static void trim(unsigned char *s)
+static void trim(char *s)
 {
   /* Remove from the end */
   while (isspace(s[strlen(s)-1]))
@@ -33,7 +34,7 @@ static void trim(unsigned char *s)
  * Return the boolean value of the parameter, by interpreting 'yes', 'no',
  * 'true', 'false', '0', '1' as valid answers.
  ******/
-static int booleanvalue(unsigned char *s)
+static int booleanvalue(char *s)
 {
   char *s2;
   int r = -1;
@@ -58,7 +59,7 @@ static int booleanvalue(unsigned char *s)
 /******
  * Return the integer value of the parameter.
  ******/
-static int integervalue(unsigned char *s)
+static int integervalue(char *s)
 {
   char *s2;
   int r = -1;
@@ -75,7 +76,7 @@ static int integervalue(unsigned char *s)
  * Expand the file name passed as parameter, by converting ~, ~/, and ~username
  * as the corresponding home directory
  ******/
-static void expandfilename(unsigned char *s)
+static void expandfilename(char *s)
 {
   char s2[MAXNAMLEN+1] = "";
   int i;
@@ -122,9 +123,9 @@ static void expandfilename(unsigned char *s)
 int readrcfile(minisecsrv_cfg *cfg)
 {
   FILE *f;
-  unsigned char rcfile[MAXNAMLEN+1];
-  unsigned char buf[1024];
-  unsigned char dummystr[1024];
+  char rcfile[MAXNAMLEN+1];
+  char buf[1024];
+  char dummystr[1024];
   int rc = 0;
   
   memset(rcfile, 0, sizeof(rcfile));
@@ -155,144 +156,144 @@ int readrcfile(minisecsrv_cfg *cfg)
 
       /* Now we've got something interesting to read */
       default : 
-	if (!STRCMP(buf, "Cipher"))
-	{
-	  if (cfg->cipher)
-	    free(cfg->cipher);
-	  cfg->cipher = strdup(buf+strlen("Cipher"));
-	  if (!cfg->cipher)
-	  {
-	    fprintf(stderr, "Unable to re-allocate memory for cfg->cipher.\n");
-	    rc = -1;
-	    goto done;
-	  }
-	  trim(cfg->cipher);
-	  break;
-	}
+	    if (!STRCMP(buf, "Cipher"))
+	    {
+	      if (cfg->cipher)
+	        free(cfg->cipher);
+	      cfg->cipher = strdup(buf+strlen("Cipher"));
+	      if (!cfg->cipher)
+	      {
+	        fprintf(stderr, "Unable to re-allocate memory for cfg->cipher.\n");
+	        rc = -1;
+	        goto done;
+	      }
+	      trim(cfg->cipher);
+	      break;
+	    }
 
-	if (!STRCMP(buf, "PBKDF2Hash"))
-	{
-	  if (cfg->hash)
-	    free(cfg->hash);
-	  cfg->hash = strdup(buf+strlen("PBKDF2Hash"));
-	  if (!cfg->hash)
-	  {
-	    fprintf(stderr, "Unable to re-allocate memory for cfg->hash.\n");
-	    rc = -1;
-	    goto done;
-	  }
-	  trim(cfg->hash);
-	  break;
-	}
+	    if (!STRCMP(buf, "PBKDF2Hash"))
+	    {
+	      if (cfg->hash)
+	        free(cfg->hash);
+	      cfg->hash = strdup(buf+strlen("PBKDF2Hash"));
+	      if (!cfg->hash)
+	      {
+	        fprintf(stderr, "Unable to re-allocate memory for cfg->hash.\n");
+	        rc = -1;
+	        goto done;
+	      }
+	      trim(cfg->hash);
+	      break;
+	    }
 
-	if (!STRCMP(buf, "PBKDF2Iterations"))
-	{
-	  cfg->iterations = integervalue(buf+strlen("PBKDF2Iterations"));
-	  break;
-	}
+	    if (!STRCMP(buf, "PBKDF2Iterations"))
+	    {
+	      cfg->iterations = integervalue(buf+strlen("PBKDF2Iterations"));
+	      break;
+	    }
 
-	if (!STRCMP(buf, "PBKDF2Salt"))
-	{
-	  if (cfg->salt)
-	    free(cfg->salt);
-	  cfg->salt = strdup(buf+strlen("PBKDF2Salt"));
-	  if (!cfg->salt)
-	  {
-	    fprintf(stderr, "Unable to re-allocate memory for cfg->salt");
-	    rc = -1;
-	    goto done;
-	  }
-	  trim(cfg->salt);
-	  break;
-	}
+	    if (!STRCMP(buf, "PBKDF2Salt"))
+	    {
+	      if (cfg->salt)
+	        free(cfg->salt);
+	      cfg->salt = strdup(buf+strlen("PBKDF2Salt"));
+	      if (!cfg->salt)
+	      {
+	        fprintf(stderr, "Unable to re-allocate memory for cfg->salt");
+	        rc = -1;
+	        goto done;
+	      }
+	      trim(cfg->salt);
+	      break;
+	    }
 
-	if (!STRCMP(buf, "PBKDF2Check"))
-	{
-	  if (cfg->checkvalue)
-	    free(cfg->checkvalue);
-	  cfg->checkvalue = strdup(buf+strlen("PBKDF2Check"));
-	  if (!cfg->checkvalue)
-	  {
-	    fprintf(stderr, "Unable to re-allocate memory for cfg->checkvalue.\n");
-	    rc = -1;
-	    goto done;
-	  }
-	  trim(cfg->checkvalue);
-	  break;
-	}
+	    if (!STRCMP(buf, "PBKDF2Check"))
+	    {
+	      if (cfg->checkvalue)
+	        free(cfg->checkvalue);
+	      cfg->checkvalue = strdup(buf+strlen("PBKDF2Check"));
+	      if (!cfg->checkvalue)
+	      {
+	        fprintf(stderr, "Unable to re-allocate memory for cfg->checkvalue.\n");
+	        rc = -1;
+	        goto done;
+	      }
+	      trim(cfg->checkvalue);
+	      break;
+	    }
 
-	if (!STRCMP(buf, "User"))
-	{
-	  if (cfg->user)
-	    free(cfg->user);
-	  cfg->user = strdup(buf+strlen("User"));
-	  if (!cfg->user)
-	  {
-	    fprintf(stderr, "Unable to re-allocate memory for cfg->user.\n");
-	    rc = -1;
-	    goto done;
-	  }
-	  trim(cfg->user);
-	  break;
-	}
+	    if (!STRCMP(buf, "User"))
+	    {
+	      if (cfg->user)
+	        free(cfg->user);
+	      cfg->user = strdup(buf+strlen("User"));
+	      if (!cfg->user)
+	      {
+	        fprintf(stderr, "Unable to re-allocate memory for cfg->user.\n");
+	        rc = -1;
+	        goto done;
+	      }
+	      trim(cfg->user);
+	      break;
+	    }
 
-	if (!STRCMP(buf, "Group"))
-	{
-	  if (cfg->group)
-	    free(cfg->group);
-	  cfg->group = strdup(buf+strlen("Group"));
-	  if (!cfg->group)
-	  {
-	    fprintf(stderr, "Unable to re-allocate memory for cfg->group.\n");
-	    rc = -1;
-	    goto done;
-	  }
-	  trim(cfg->group);
-	  break;
-	}
+	    if (!STRCMP(buf, "Group"))
+	    {
+	      if (cfg->group)
+	        free(cfg->group);
+	      cfg->group = strdup(buf+strlen("Group"));
+	      if (!cfg->group)
+	      {
+	        fprintf(stderr, "Unable to re-allocate memory for cfg->group.\n");
+	        rc = -1;
+	        goto done;
+	      }
+	      trim(cfg->group);
+	      break;
+	    }
 
-	if (!STRCMP(buf, "Listen"))
-	{
-	  if (cfg->hostport)
-	    free(cfg->hostport);
-	  cfg->hostport = strdup(buf+strlen("Listen"));
-	  if (!cfg->hostport)
-	  {
-	    fprintf(stderr, "Unable to re-allocate memory for cfg->hostport.\n");
-	    rc = -1;
-	    goto done;
-	  }
-	  trim(cfg->hostport);
-	  break;
-	}
+	    if (!STRCMP(buf, "Listen"))
+	    {
+	      if (cfg->hostport)
+	        free(cfg->hostport);
+	      cfg->hostport = strdup(buf+strlen("Listen"));
+	      if (!cfg->hostport)
+	      {
+	        fprintf(stderr, "Unable to re-allocate memory for cfg->hostport.\n");
+	        rc = -1;
+	        goto done;
+	      }
+	      trim(cfg->hostport);
+	      break;
+	    }
 
-        if (!STRCMP(buf, "Output"))
-        {
-	  memset(dummystr, 0, sizeof(dummystr));
-          strncpy(dummystr, buf+strlen("Output"), sizeof(dummystr)-1);
-          trim(dummystr);
-          expandfilename(dummystr);
-	  if (cfg->output)
-	    free(cfg->output);
-	  cfg->output = strdup(dummystr);
-	  if (!cfg->output)
-	  {
-	    fprintf(stderr, "Unable to re-allocate memory for cfg->output.\n");
-	    rc = -1;
-	    goto done;
-	  }
-          break;
-        }
-        
-        if (!STRCMP(buf, "EnableOutput"))
-        {
-          cfg->enableoutput = booleanvalue(buf+strlen("EnableOutput"));
-          break;
-        }
-        
-        /* None of the above, just issue a warning */
-        fprintf(stderr, "Warning, line '%s' ignored.\n", buf);
+      if (!STRCMP(buf, "Output"))
+      {
+	      memset(dummystr, 0, sizeof(dummystr));
+        strncpy(dummystr, buf+strlen("Output"), sizeof(dummystr)-1);
+        trim(dummystr);
+        expandfilename(dummystr);
+	      if (cfg->output)
+	        free(cfg->output);
+	      cfg->output = strdup(dummystr);
+	      if (!cfg->output)
+	      {
+	        fprintf(stderr, "Unable to re-allocate memory for cfg->output.\n");
+	        rc = -1;
+	        goto done;
+	      }
         break;
+      }
+        
+      if (!STRCMP(buf, "EnableOutput"))
+      {
+        cfg->enableoutput = booleanvalue(buf+strlen("EnableOutput"));
+        break;
+      }
+        
+      /* None of the above, just issue a warning */
+      fprintf(stderr, "Warning, line '%s' ignored.\n", buf);
+      break;
     }
   }
   fclose(f);
@@ -371,24 +372,24 @@ static void parsecmdline(minisecsrv_cfg *cfg, int argc, char **argv)
 
     switch (c) {
       case 'c':
-	if (cfg->rcfile)
-	  free(cfg->rcfile);
-	cfg->rcfile = strdup(optarg);
-	break;
+	      if (cfg->rcfile)
+	        free(cfg->rcfile);
+	      cfg->rcfile = strdup(optarg);
+	      break;
 
       case 'h':
-	printhelp();
-	break;
+	      printhelp();
+	      break;
 
       case 'd':
-	cfg->debug = 1;
-	break;
+	      cfg->debug = 1;
+	      break;
 
       case '?':
-	break;
+	      break;
 
       default:
-	fprintf(stderr, "?? getopt returned character code 0%o ??\n", c);
+	      fprintf(stderr, "?? getopt returned character code 0%o ??\n", c);
     }
   }
 
@@ -407,16 +408,20 @@ static void parsecmdline(minisecsrv_cfg *cfg, int argc, char **argv)
  ******/
 int derivatekey(minisecsrv_cfg *cfg)
 {
+  int keylen = 0;
   int rc = 0;
 
-  cfg->key = malloc(cfg->enc->key_len);
+  keylen = EVP_CIPHER_get_key_length(cfg->enc);
+  
+  //cfg->key = malloc(cfg->enc->key_len);
+  cfg->key = malloc(keylen);
   if (!cfg->key)
   {
     fprintf(stderr, "Unable to allocate memory for the key.\n");
     rc = -1;
     goto done;
   }
-  if (!PKCS5_PBKDF2_HMAC(cfg->passphrase, strlen(cfg->passphrase), cfg->salt, strlen(cfg->salt), cfg->iterations, cfg->digest, cfg->enc->key_len, cfg->key))
+  if (!PKCS5_PBKDF2_HMAC(cfg->passphrase, strlen(cfg->passphrase), cfg->salt, strlen(cfg->salt), cfg->iterations, cfg->digest, keylen, cfg->key))
   {
     fprintf(stderr, "Key derivation failed (no more info).\n");
     rc = -1;
@@ -434,20 +439,22 @@ done:
  ******/
 int askfor2passphrases(minisecsrv_cfg *cfg)
 {
-  unsigned char *pass1 = NULL, *pass2 = NULL;
-  unsigned int pass1len, pass2len;
+  char *pass1 = NULL, *pass2 = NULL;
+  int pass1len, pass2len;
   int rc = 0;
 
   /* Ask twice for a passphrase and compare them */
   pass1 = malloc(16); pass1len = 16;
   memset(pass1, 'a', pass1len);
   pass2 = malloc(16); pass2len = 16;
-  if (rc = getpassword("Passphrase: ", &pass1, &pass1len, '*'))
+  rc = getpassword("Passphrase: ", &pass1, &pass1len, '*');
+  if (rc)
   {
     fprintf(stderr, "Unable to get first passphrase.\n");
     goto done;
   }
-  if (rc = getpassword("Passphrase (repeat): ", &pass2, &pass2len, '*'))
+  rc = getpassword("Passphrase (repeat): ", &pass2, &pass2len, '*');
+  if (rc)
   {
     fprintf(stderr, "Unable to get second passphrase.\n");
     goto done;
@@ -480,12 +487,12 @@ done:
 /******
  * Calculate the check value from the config elements
  ******/
-int calculatecheckvalue(minisecsrv_cfg *cfg, unsigned char **out, unsigned int *outl)
+int calculatecheckvalue(minisecsrv_cfg *cfg, char **out, int *outl)
 {
   unsigned char iv[EVP_MAX_IV_LENGTH];
   unsigned char magicvalue[] = { 'M', 'a', 'g', 'i', 'c', 'v', 'a', 'l', 'u', 'e' }; 
   unsigned char *tmpout = NULL;
-  unsigned int tmpoutl;
+  int tmpoutl;
   int rc = 0;
 
   memset(iv, 0, EVP_MAX_IV_LENGTH);
@@ -500,7 +507,8 @@ int calculatecheckvalue(minisecsrv_cfg *cfg, unsigned char **out, unsigned int *
   }
 
   /* Perform an encryption of known and static data (magic block, constant IV) */
-  if (rc = dobareencrypt(cfg, iv, magicvalue, sizeof(magicvalue), tmpout, &tmpoutl))
+  rc = dobareencrypt(cfg, iv, magicvalue, sizeof(magicvalue), tmpout, &tmpoutl);
+  if (rc)
   {
     fprintf(stderr, "Encryption of magic value failed.\n");
     goto done;
@@ -539,9 +547,9 @@ done:
 int init(int argc, char **argv, minisecsrv_cfg **maincfg)
 {
   minisecsrv_cfg *cfg;
-  unsigned char *checkvalue = NULL;
-  unsigned int checkvaluelen = 0;
-  unsigned int len;
+  char *checkvalue = NULL;
+  int checkvaluelen = 0;
+  int len;
   int rc = 0;
 
   cfg = malloc(sizeof(minisecsrv_cfg));
@@ -594,9 +602,11 @@ int init(int argc, char **argv, minisecsrv_cfg **maincfg)
   OpenSSL_add_all_algorithms();
   /* TODO: mettre en place les handlers pour mutex */
 
-  if (rc = readrcfile(cfg))
+  rc = readrcfile(cfg);
+  if (rc)
     goto done;
-  if (rc = checkconfig(cfg))
+  rc = checkconfig(cfg);
+  if (rc)
     goto done;
 
   /* If no check value is given, calculate and display it */
@@ -604,13 +614,16 @@ int init(int argc, char **argv, minisecsrv_cfg **maincfg)
   {
     int i;
 
-    if (rc = askfor2passphrases(cfg))
+    rc = askfor2passphrases(cfg);
+    if (rc)
       goto done;
 
-    if (rc = derivatekey(cfg))
+    rc = derivatekey(cfg);
+    if (rc)
       goto done;
 
-    if (rc = calculatecheckvalue(cfg, &checkvalue, &checkvaluelen))
+    rc = calculatecheckvalue(cfg, &checkvalue, &checkvaluelen);
+    if (rc)
       goto done;
     
     fprintf(stderr, "Calculated check value is: ");
@@ -633,13 +646,16 @@ int init(int argc, char **argv, minisecsrv_cfg **maincfg)
     rc = -1;
     goto done;
   }
-  if (rc = getpassword("Passphrase: ", &(cfg->passphrase), &len, '*'))
+  rc = getpassword("Passphrase: ", &(cfg->passphrase), &len, '*');
+  if (rc)
     goto done;
 
-  if (rc = derivatekey(cfg))
+  rc = derivatekey(cfg);
+  if (rc)
     goto done;
 
-  if (rc = calculatecheckvalue(cfg, &checkvalue, &checkvaluelen))
+  rc = calculatecheckvalue(cfg, &checkvalue, &checkvaluelen);
+  if (rc)
     goto done;
 
   if ((checkvaluelen != strlen(cfg->checkvalue)) || (strncmp(checkvalue, cfg->checkvalue, checkvaluelen)))

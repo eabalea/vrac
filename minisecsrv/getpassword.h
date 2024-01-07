@@ -17,6 +17,6 @@
  * If this is '\0'; none is used.
  * \return 0 on success or -1 on error.
  */
-int getpassword(const char* prompt, unsigned char** buffer, unsigned* sz, char replacement);
+int getpassword(const char* prompt, char** buffer, int* sz, char replacement);
 
 #endif

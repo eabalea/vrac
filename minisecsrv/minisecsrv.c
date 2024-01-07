@@ -39,7 +39,8 @@ void SIGQUIThandler(int signum)
   if (cfg->debug)
     printf("Entering SIGQUIThandler()\n");
   
-  OPENSSL_cleanse(cfg->key, cfg->enc->key_len);
+  //OPENSSL_cleanse(cfg->key, cfg->enc->key_len);
+  OPENSSL_cleanse(cfg->key, EVP_CIPHER_get_key_length(cfg->enc));
   OPENSSL_cleanse(cfg->passphrase, strlen(cfg->passphrase)+1);
 
   exit(-1);
@@ -67,20 +68,51 @@ int processrequest(BIO *cbio)
   memset(len_s, 0, sizeof(len_s));
 
   /* Reading protocol elements (very dumb version) */
-  if ((rc = BIO_read(cbio, command, 7)) <= 0)
-  { rc = -1; goto done; }
-  if ((rc = BIO_read(cbio, &sep, 1)) <= 0)
-  { rc = -1; goto done; }
+
+  rc = BIO_read(cbio, command, 7);
+  if (rc <= 0)
+  {
+    rc = -1;
+    goto done;
+  }
+  
+  BIO_read(cbio, &sep, 1);
+  if (rc <= 0)
+  {
+    rc = -1;
+    goto done;
+  }
+  
   if (sep != ' ')
-  { rc = -1; goto done; }
+  {
+    rc = -1;
+    goto done;
+  }
+  
   if (!strncmp(command, "encrypt", 7) && !strncmp(command, "decrypt", 7))
-  { rc = -1; goto done; }
-  if ((rc = BIO_read(cbio, len_s, 8)) <= 0)
-  { rc = -1; goto done; }
-  if ((rc = BIO_read(cbio, &sep, 1)) <= 0)
-  { rc = -1; goto done; }
+  {
+    rc = -1;
+    goto done;
+  }
+  
+  rc = BIO_read(cbio, len_s, 8);
+  if (rc <= 0)
+  { rc = -1;
+    goto done;
+  }
+
+  rc = BIO_read(cbio, &sep, 1);
+  if (rc <= 0)
+  {
+    rc = -1;
+    goto done;
+  }
+  
   if (sep != ' ')
-  { rc = -1; goto done; }
+  {
+    rc = -1;
+    goto done;
+  }
 
   /* "len" field of the protocol is expressed in hex, malloc necessary
    * memory and read data
@@ -88,16 +120,28 @@ int processrequest(BIO *cbio)
   len = strtoul(len_s, NULL, 16);
   datain = malloc(len);
   if (!datain)
-  { rc = -1; goto done; }
+  {
+    rc = -1;
+    goto done;
+  }
   datainl = BIO_read(cbio, datain, len);
   if (datainl != len)
-  { rc = -1; goto done; }
+  {
+    rc = -1;
+    goto done;
+  }
 
   /* Check the final character (\n) */
   if ((rc = BIO_read(cbio, &sep, 1)) <= 0)
-  { rc = -1; goto done; }
+  {
+    rc = -1;
+    goto done;
+  }
   if (sep != '\n')
-  { rc = -1; goto done; }
+  {
+    rc = -1;
+    goto done;
+  }
 
   /* Do the work */
   if (!strncmp(command, "encrypt", 7))
@@ -144,7 +188,8 @@ int main(int argc, char **argv)
   BIO *biobuf = NULL;
   int rc = 0;
 
-  if (rc = init(argc, argv, &cfg))
+  rc = init(argc, argv, &cfg);
+  if (rc)
     goto done;
 
   signal(SIGQUIT, SIGQUIThandler);

@@ -8,6 +8,7 @@ static char rcsid[] = "$Id: utils.c,v 1.2 2013/03/27 18:37:06 eabalea Exp $";
 #include <unistd.h>
 #include <openssl/evp.h>
 #include <openssl/bio.h>
+#include <openssl/rand.h>
 #include <sys/types.h>
 #include <grp.h>
 #include <pwd.h>
@@ -124,7 +125,7 @@ done:
 /******
  * Change current identity, resolving named group and user.
  ******/
-int changeidentity(char *user, char *group)
+int changeidentity(const char *user, const char *group)
 {
   struct group *grpid = NULL;
   struct passwd *pwdid = NULL;
@@ -182,8 +183,11 @@ done:
  ******/
 int generaterandomiv(minisecsrv_cfg *cfg, unsigned char *iv)
 {
+  int ivlen = 0;
   int rc = 0;
-  if (RAND_pseudo_bytes(iv, cfg->enc->iv_len) == -1)
+
+  ivlen = EVP_CIPHER_get_iv_length(cfg->enc);
+  if (RAND_bytes(iv, ivlen) == -1)
   {
     rc = MINISECSRV_ERR_RAND;
     goto done;
@@ -197,10 +201,10 @@ done:
 /******
  * Do the encryption, the caller has to give the iv.
  ******/
-int dobareencrypt(minisecsrv_cfg *cfg, unsigned char *iv, unsigned char *in, unsigned int inl, unsigned char *out, unsigned int *outl)
+int dobareencrypt(minisecsrv_cfg *cfg, unsigned char *iv, unsigned char *in, int inl, unsigned char *out, int *outl)
 {
   EVP_CIPHER_CTX *ctx = NULL;
-  unsigned int tmpl = 0;
+  int tmpl = 0;
   int rc = 0;
 
   ctx = EVP_CIPHER_CTX_new();
@@ -236,10 +240,10 @@ done:
 /******
  * Do the decryption, the caller has to give the iv.
  ******/
-int dobaredecrypt(minisecsrv_cfg *cfg, unsigned char *iv, unsigned char *in, unsigned int inl, unsigned char *out, unsigned int *outl)
+int dobaredecrypt(minisecsrv_cfg *cfg, unsigned char *iv, unsigned char *in, int inl, unsigned char *out, int *outl)
 {
   EVP_CIPHER_CTX *ctx = NULL;
-  unsigned int tmpl = 0;
+  int tmpl = 0;
   int rc = 0;
 
   ctx = EVP_CIPHER_CTX_new();
@@ -275,7 +279,7 @@ done:
 /******
  * Encode some data into base64
  ******/
-int dobase64encode(minisecsrv_cfg *cfg, unsigned char *in, unsigned int inl, unsigned char *out, unsigned int *outl)
+int dobase64encode(minisecsrv_cfg *cfg, unsigned char *in, int inl, char *out, int *outl)
 {
   BIO *b64 = NULL,
       *biomem = NULL;
@@ -331,7 +335,7 @@ done:
 /******
  * Decode the base64 given data
  ******/
-int dobase64decode(minisecsrv_cfg *cfg, unsigned char *in, unsigned int inl, unsigned char *out, unsigned int *outl)
+int dobase64decode(minisecsrv_cfg *cfg, char *in, int inl, unsigned char *out, int *outl)
 {
   BIO *b64 = NULL,
       *biomemin = NULL,
@@ -410,12 +414,15 @@ done:
  * The output buffer is allocated for you (set it to NULL at start),
  * it's under your responsibility.
  ******/
-int dofullencrypt(minisecsrv_cfg *cfg, unsigned char *in, unsigned int inl, unsigned char **out, unsigned *outl)
+int dofullencrypt(minisecsrv_cfg *cfg, unsigned char *in, int inl, char **out, int *outl)
 {
   unsigned char iv[EVP_MAX_IV_LENGTH];
   unsigned char *tmpout = NULL;
-  unsigned int tmpoutl;
+  int tmpoutl;
+  int ivlen = 0;
   int rc = 0;
+
+  ivlen = EVP_CIPHER_get_iv_length(cfg->enc);
 
   /* We need to generate a random IV for each encryption */
   rc = generaterandomiv(cfg, iv);
@@ -431,15 +438,15 @@ int dofullencrypt(minisecsrv_cfg *cfg, unsigned char *in, unsigned int inl, unsi
   }
 
   /* Write the IV first */
-  memcpy(tmpout, iv, cfg->enc->iv_len);
+  memcpy(tmpout, iv, ivlen);
 
   /* Get the raw encrypted data after the IV */
-  rc = dobareencrypt(cfg, iv, in, inl, tmpout+cfg->enc->iv_len, &tmpoutl);
+  rc = dobareencrypt(cfg, iv, in, inl, tmpout+ivlen, &tmpoutl);
   if (rc)
     goto done;
 
   /* Adjust the intermediate result size (add IV length) */
-  tmpoutl += cfg->enc->iv_len;
+  tmpoutl += ivlen;
 
   /* And encode the result in base64 */
   *out = malloc(tmpoutl*2); /* TODO: ajuster, *4/3 */
@@ -470,12 +477,15 @@ done:
  * The output buffer is allocated for you (set it to NULL at start),
  * it's under your responsibility.
  ******/
-int dofulldecrypt(minisecsrv_cfg *cfg, unsigned char *in, unsigned int inl, unsigned char **out, unsigned *outl)
+int dofulldecrypt(minisecsrv_cfg *cfg, char *in, int inl, unsigned char **out, int *outl)
 {
   unsigned char iv[EVP_MAX_IV_LENGTH];
   unsigned char *tmpout = NULL;
-  unsigned int tmpoutl;
+  int tmpoutl;
+  int ivlen = 0;
   int rc = 0;
+
+  ivlen = EVP_CIPHER_get_iv_length(cfg->enc);
 
   /* Decode the base64 thing */
   tmpout = malloc(inl); /* TODO: ajuster */
@@ -484,21 +494,22 @@ int dofulldecrypt(minisecsrv_cfg *cfg, unsigned char *in, unsigned int inl, unsi
     rc = MINISECSRV_ERR_CANTMALLOC;
     goto done;
   }
+
   rc = dobase64decode(cfg, in, inl, tmpout, &tmpoutl);
   if (rc)
     goto done;
 
-  if (tmpoutl < cfg->enc->iv_len)
+  if (tmpoutl < ivlen)
   {
     rc = MINISECSRV_ERR_ENCRYPTEDDATATOOSHORT;
     goto done;
   }
 
-  memcpy(iv, tmpout, cfg->enc->iv_len);
+  memcpy(iv, tmpout, ivlen);
 
   /* Do a bare decryption */
-  *out = malloc(tmpoutl-cfg->enc->iv_len);
-  rc = dobaredecrypt(cfg, iv, tmpout+cfg->enc->iv_len, tmpoutl-cfg->enc->iv_len, *out, outl);
+  *out = malloc(tmpoutl-ivlen);
+  rc = dobaredecrypt(cfg, iv, tmpout+ivlen, tmpoutl-ivlen, *out, outl);
   if (rc)
     goto done;
 

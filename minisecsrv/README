@@ -1,9 +1,12 @@
 VERSION 0.1
 
-#TODO: Ecrire ce truc
+Cette première version sait chiffrer et déchiffrer des trucs, n'est pas multithread, et n'intègre pas de MAC.
 
-But cherché à atteindre avec ce logiciel
-Fonctionnement général du logiciel
-Contenu du fichier de configuration
-Problèmes sécurité non résolus
+
+TODO:
+  [ ] Documenter le protocole
+  [ ] Documenter la configuration
+  [ ] Ajouter le support d'un protocole de MAC
+  [ ] Ajouter le support d'un chiffrement AEAD
+  [ ] Passer toutes les chaînes en unsigned char * et supprimer les warnings introduits
 
